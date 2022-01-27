@@ -1,0 +1,13 @@
+volumes:
+  geo-db-data:
+services:
+  postgis_db:
+    container_name: geo_db
+    environment:
+      POSTGRES_USER: gis
+      POSTGRES_PASS: gis
+    image: kartoza/postgis
+    ports:
+      - "25432:5432"
+    volumes:
+      - geo-db-data:/var/lib/postgresql

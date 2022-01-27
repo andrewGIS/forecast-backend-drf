@@ -14,8 +14,18 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
+from forecast_app.views import download, run_calculation, test_saving
+
+from rest_framework import routers
+
+router = routers.DefaultRouter()
+#user_detail = GetRasterTiff.as_view({'get': 'download'})
+#router.register('get_tiff', user_detail, 'tiff')
 
 urlpatterns = [
+    path('get_tiff', download),
+    path('test_calc', run_calculation),
+    path('test_saving', test_saving),
     path('admin/', admin.site.urls),
 ]
