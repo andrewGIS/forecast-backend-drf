@@ -15,17 +15,19 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from forecast_app.views import download, run_calculation, test_saving
 
-from rest_framework import routers
-
-router = routers.DefaultRouter()
-#user_detail = GetRasterTiff.as_view({'get': 'download'})
-#router.register('get_tiff', user_detail, 'tiff')
+from forecast_app.views import debug_create_forecast, web_app
 
 urlpatterns = [
-    path('get_tiff', download),
-    path('test_calc', run_calculation),
-    path('test_saving', test_saving),
+    # TODO как группировать пути может префикс какой есть
+    # path(
+    #     'api/v1/', include([
+    #         path('models/', models, name='models'),
+    #         path('event_groups/<str:model_name>/', forecast_groups, name='event_groups')
+    #     ])
+    # ),
+    path('api/v1/', include('forecast_app.urls')),
     path('admin/', admin.site.urls),
+    path('', web_app),
+    path('test_debug/', debug_create_forecast),
 ]

@@ -1,156 +1,92 @@
 import datetime
-from typing import List
 
-import numpy as np
 from django.contrib.gis.gdal import GDALRaster
-from rest_framework import viewsets
 
-from forecast_app.models import RasterForecast, Calculation, ForecastGroup
+from django.shortcuts import render
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
 
-# Create your views here.
-from django.http import HttpResponse, FileResponse
-from forecast_app.models import IndexRaster, ForecastModel
-from raster.algebra.parser import RasterAlgebraParser, FormulaParser
+from .models import (
+    ForecastModel,
+    Calculation, InfoMixin,
+)
+from .serializers import ForecastModelSerializer, CalculationSerializer
 
-
-def calc_path(x: str):
-    # Пример доступа к данным без загрузки
-    # zipFile = r"D:\Work\_new_features\forecast\app_drf\forecast_app\2021072100.zip"
-    # filename = 'gfs.2021072100.003.cape_180-0.tif'
-    # rst = GDALRaster(f'/vsizip//{zipFile}\\{filename}')
-    # rst = GDALRaster(f'/vsizip//vsicurl/http://84.201.155.104/gfs-ural/2022012100.zip//{filename}')
-
-    # One calculation sample with online raster
-    # rst = GDALRaster(
-    #     f'/vsizip//vsicurl/http://84.201.155.104/gfs-ural/2022012100.zip\\gfs.2022012100.003.cape_180-0.tif'
-    # )
-    # data = dict(zip(['x'], [rst]))
-
-    return f'/vsizip//vsicurl/http://84.201.155.104/gfs-ural/2021082100.zip\\gfs.2021082100.015.{x}.tif'
+from django.http import HttpResponse
+from .services import create_forecast, find_forecast
 
 
-def test_saving(request, groupName=None):
-
-    forecastGroup = ForecastGroup.objects.get(name=groupName) if groupName else ForecastGroup.objects.all()[0]
-    forecastGroupCalculations: List[Calculation] = list(Calculation.objects.filter(forecast_group=forecastGroup))
-    forecastModel = forecastGroupCalculations[0].model   # каждый уровень опасности рассчитывается для одной модели
-
-    # Расчет значений
-    levels = []
-    for calculation in forecastGroupCalculations:
-        data = {}
-        for s in calculation.variables.all():
-            data[s.variable] = GDALRaster(
-                calc_path(s.index_name)
-            ).bands[0].data()
-
-        # Используем Formula Parser, потому что RasterAlgebraParse не правильно
-        # записывает значения когда получаются логические значения
-        # при ипользовании FormulaParser можно привести к определленному типу
-        # parser = RasterAlgebraParser()
-        # calculated = parser.evaluate_raster_algebra(data, squall.expression)
-        # но приходится тянуть дополнительные метаданные модели
-        parser = FormulaParser()
-        calculated = (parser.evaluate(data, calculation.expression)).astype(np.uint8)
-
-        # заменяем код на уровень риска
-        calculated = np.where(calculated == 0, 0, calculation.code)
-        levels.append(calculated)
-
-    # select most danger group for each pixel
-    result = np.stack(levels, axis=2)
-
-    # need mask for zero values
-    result = np.ma.masked_equal(result, 0)
-    result = result.min(axis=2)
-    result = result.filled(fill_value=0)
-
-    # Итоговый растр
-    outRaster = GDALRaster({
-        'nr_of_bands': 1,
-        'width': forecastModel.rasterWidth,
-        'height': forecastModel.rasterHeight,
-        'srid': 4326,
-        'datatype': 1,
-        'bands': [{
-            'data': result.astype(np.uint8),  # без приведения значения неправильные записывались
-            'nodata_value': 255
-        }]
-    })
-    # указать после создания растра, в конструкторе не подхватывается
-    # строку (34.875, 0.25, 0.0, 65.125, 0.0, -0.25) в питоновский объект список
-    # через eval не стал делать
-    transform = forecastModel.geotransform
-    outRaster.geotransform = [float(i) for i in transform[1:-1].split(',')]
+@api_view(['GET'])
+def models(request):
+    forecastModels = ForecastModel.objects.all()
+    serializer = ForecastModelSerializer(forecastModels)
+    return Response(serializer.data)
 
 
-    r = RasterForecast(
-        raster=outRaster,
-        model=ForecastModel.objects.get(name='gfs'),
-        forecast_group=ForecastGroup.objects.get(name='squall'),
-        date_UTC_full='2021072100.003',
-        forecast_date=datetime.datetime(2021, 7, 21),
-        forecast_type='00',
-        forecast_datetime_utc=datetime.datetime(2021, 7, 21, 3),
+@api_view(['GET'])
+def forecast_groups(request, model_name):
+    calculations = Calculation.objects.filter(model__name=model_name).distinct('forecast_group__name')
+    serializer = CalculationSerializer(calculations, many=True)
+    return Response({"groups": serializer.data})
+
+
+def web_app(request):
+    context = {"value": "Hello Django", "message": "Welcome to Python"}
+    return render(request, 'forecast_app/index.html', context)
+
+
+def get_forecast_by_xy(request):
+    testCoordinates = (56.43, 61.53)
+    return HttpResponse(
+        find_forecast(coordinates=testCoordinates),
+        content_type='application/json'
     )
-    r.save()
 
+
+def debug_create_forecast(request):
+    base = datetime.datetime(2021, 5, 4)
+    date_list = [base - datetime.timedelta(days=x) for x in range(1)]
+    for date in date_list:
+        for hour, hour in InfoMixin.FORECAST_UTC_HOURS_CHOICES:
+            for fType in ['00', '12']:
+                date = date.replace(hour=int(hour))
+                create_forecast(
+                    groupName='squall',
+                    forecastType=fType,
+                    date=date,
+                )
     return HttpResponse('ok')
 
 
-def download(request):
-        """
-        Return a specific raster.
-        """
+def get_forecast_by_date(request):
+    modelName = request.GET.get('model', None)
+    date = request.GET.get('date', None)
+    hour = request.GET.get('hour', None)
+    group = request.GET.get('group', None)
+    dataType = request.GET.get('dataType', 'vector')
 
-        import io
+    if date:
+        date = datetime.datetime.strptime(date, '%Y%m%d')
 
-
-        # rst = GDALRaster({
-        #      'name': '/vsimem/temporarymemfile',
-        #      'driver': 'tif',
-        #      'width': 161, 'height': 61, 'srid': 4326,
-        #      'bands': [{'data': RasterForecast.objects.all()[1].raster.bands[0].data()}]
-        # })
-
-        rst = GDALRaster({
-             'name': '/vsimem/temporarymemfile',
-             'driver': 'tif',
-             'width': 161, 'height': 61, 'srid': 4326,
-             'bands': [{'data': IndexRaster.objects.all()[0].raster.bands[0].data()}]
-        })
-
-        file = io.BytesIO()
-        file.write(rst.vsi_buffer)
-        file.seek(0)
-
-        # sending response
+    if dataType == 'raster':
+        rst = find_forecast(
+            modelName=modelName,
+            forecastGroup=group,
+            date=date,
+            hour=hour,
+            dataType='raster'
+        )
         response = HttpResponse(rst.vsi_buffer, content_type='image/tiff')
-        response['Content-Disposition'] = 'attachment;filename="foo.tif"'
+        #response['Content-Disposition'] = 'attachment;filename="foo.tif"'
 
-        #return HttpResponse(rst.vsi_buffer, 'image/tiff')
         return response
-        #return FileResponse(rst.vsi_buffer, filename='test.tif')
 
-
-def run_calculation(request):
-
-    parser = RasterAlgebraParser()
-    querySet = RasterRisk.objects.all()
-    rast1 = querySet[0].raster
-    rast2 = querySet[1].raster
-    data = dict(zip(['x', 'y'], [rast1, rast2]))
-    rst = parser.evaluate_raster_algebra(data, 'x + y')
-
-    new_rst = GDALRaster({
-        'name': '/vsimem/temporarymemfile',
-        'driver': 'tif',
-        'width': 161,
-        'height': 61,
-        'srid': 4326,
-        'datatype': 6,
-        'bands': [{'data': rst.bands[0].data()}]
-    })
-
-    return HttpResponse(new_rst.vsi_buffer, 'image/tiff')
-
+    return HttpResponse(
+        find_forecast(
+            modelName=modelName,
+            forecastGroup=group,
+            date=date,
+            hour=hour
+        ),
+        content_type='application/json',
+    )

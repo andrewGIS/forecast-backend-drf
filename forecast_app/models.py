@@ -36,14 +36,15 @@ class InfoMixin(models.Model):
         ('12', '12'),
     )
 
+    # TODO придумать что делать с 24 часовым
     FORECAST_UTC_HOURS_CHOICES = (
+        #('00', '00'),
         ('03', '03'),
         ('09', '09'),
         ('12', '12'),
         ('15', '15'),
         ('18', '18'),
         ('21', '21'),
-        ('24', '24'),
     )
 
     class Meta:
@@ -95,7 +96,10 @@ class VectorForecast(InfoMixin, ForecastBaseMixin):
     Векторное представление прогнозов
     """
 
-    geom = models.GeometryCollectionField(verbose_name="Геометрия", srid=4326)
+    # Django specific
+    mpoly = models.PolygonField(verbose_name="Геометрия", srid=4326)
+    # TODO дублирование с calculation
+    code = models.PositiveIntegerField(verbose_name="Уровень риска")
 
     def __str__(self):
         return f'vector - {self.forecast_group.alias} - {self.date_UTC_full}'
