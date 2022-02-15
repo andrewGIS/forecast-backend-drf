@@ -258,3 +258,25 @@ def create_forecast(
     dstDs = None
 
 
+def get_remote_raster():
+    modelName = 'gfs'
+    model = ForecastModel.objects.get(name=modelName)
+    srcString = calc_path(
+        indexName='dls',
+        hour='009',
+        forecastType='00',
+        modelName='gfs',
+        date=datetime.date(2021, 5, 15)
+    )
+    data = GDALRaster(srcString).bands[0].data()
+    rst = GDALRaster({
+        'name': '/vsimem/temporarymemfile',
+        'driver': 'tif',
+        'width': model.rasterWidth,
+        'height': model.rasterHeight,
+        'srid': 4326,
+        'bands': [{'data': data}]
+    })
+    gt = model.geotransform
+    rst.geotransform = [float(i) for i in gt[1:-1].split(',')]
+    return rst
