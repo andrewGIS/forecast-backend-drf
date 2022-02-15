@@ -1,0 +1,17 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html>
+    <body >
+        <div id="app"></div>
+        {{ value|json_script:"hello-data" }}
+        <script src="{% static 'src/vue/dist/js/d3.v4.min.js' %}"></script>
+        <script src="{% static 'src/vue/dist/js/geotiff.js' %}"></script>
+        <script src="{% static 'src/vue/dist/js/chroma.min.js' %}"></script>
+        <script type="text/javascript" src="{% static 'src/vue/dist/js/chunk-vendors.js' %}"></script>
+        <script type="text/javascript" src="{% static 'src/vue/dist/js/app.js' %}"></script>
+        {#        <link href="{% static 'src/vue/dist/css/app.css' %}" rel=stylesheet>#}
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@latest/css/materialdesignicons.min.css">
+    </body>
+</html>
