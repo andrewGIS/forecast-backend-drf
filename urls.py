@@ -19,15 +19,10 @@ from django.urls import path, include
 from forecast_app.views import debug_create_forecast, web_app
 
 urlpatterns = [
-    # TODO как группировать пути может префикс какой есть
-    # path(
-    #     'api/v1/', include([
-    #         path('models/', models, name='models'),
-    #         path('event_groups/<str:model_name>/', forecast_groups, name='event_groups')
-    #     ])
-    # ),
     path('api/v1/', include('forecast_app.urls')),
+    path('api/v1/auth/', include('auth_app.urls')),
+    path('api/v1/informer_app', include('informer_app.urls')),
     path('admin/', admin.site.urls),
     path('', web_app),
-    path('test_debug/', debug_create_forecast),
+    path('test_debug/', debug_create_forecast)
 ]
