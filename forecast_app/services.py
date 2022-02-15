@@ -22,11 +22,11 @@ def find_forecast(
         forecastGroup: Optional[str] = None,
         modelName: Optional[str] = None,
         hour: Optional[str] = None,
-        dataType: Optional[str] = 'vector'
+        dataType: Optional[str] = None
 ) -> Union[Dict, GDALRaster]:
     """
     Выполняем поиск прогнозов c учетом разных фильтров
-    :param datatype: Тип данных (растр, вектор)
+    :param dataType: Тип данных (растр, вектор)
     :param hour: Час для фильтрации
     :param modelName: Имя модели, для которой ищем прогноз
     :param forecastGroup: Имя группы опасных явлений
@@ -62,12 +62,12 @@ def find_forecast(
         data = data.filter(model=fModel)
 
     # пробуем выбрать более поздний прогноз
+    # TODO неконсистеный вывод надо это как то в фильтр вывести
     forecastTypes = list(data.distinct('forecast_type').values_list('forecast_type', flat=True))
     if '12' in forecastTypes:
         data = data.filter(forecast_type='12')
 
     if dataType == 'raster':
-        print(data)
         rst = GDALRaster({
             'name': '/vsimem/temporarymemfile',
             'driver': 'tif',
@@ -80,7 +80,9 @@ def find_forecast(
         rst.geotransform = data[0].raster.geotransform
         return rst
 
-    return serialize('geojson', data, geometry_field='mpoly', fields=('code',))
+    # на фронте ждем это поле для подписей
+    return serialize('geojson', data, geometry_field='mpoly', fields=('level_code',))
+    #return serialize('geojson', data, geometry_field='mpoly')
     #return serialize('geojson', data, geometry_field='mpoly')
 
 
