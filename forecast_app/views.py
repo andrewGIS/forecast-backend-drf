@@ -8,12 +8,12 @@ from rest_framework.response import Response
 
 from .models import (
     ForecastModel,
-    Calculation, InfoMixin,
+    Calculation, InfoMixin, VectorForecast, ForecastGroup,
 )
-from .serializers import ForecastModelSerializer, CalculationSerializer
+from .serializers import ForecastModelSerializer, CalculationSerializer, VectorForecastDatesSerializer, LegendSerializer
 
-from django.http import HttpResponse
-from .services import create_forecast, find_forecast
+from django.http import HttpResponse, JsonResponse
+from .services import create_forecast, find_forecast, get_remote_raster
 
 
 @api_view(['GET'])
@@ -24,11 +24,98 @@ def models(request):
 
 
 @api_view(['GET'])
-def forecast_groups(request, model_name):
-    calculations = Calculation.objects.filter(model__name=model_name).distinct('forecast_group__name')
+def forecast_groups(request):
+    modelName = request.GET.get('model', default=None)
+    calculations = Calculation.objects.filter(model__name=modelName).distinct('forecast_group__name')
     serializer = CalculationSerializer(calculations, many=True)
     return Response({"groups": serializer.data})
 
+
+@api_view(['GET'])
+def get_forecast_by_filter(request):
+    modelName = request.GET.get('model', None)
+    date = request.GET.get('date', None)
+    hour = request.GET.get('hour', None)
+    group = request.GET.get('group', None)
+    dataType = request.GET.get('dataType', 'vector')
+
+    if not any([date, hour]):
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    params = [modelName, date, hour, group]
+    params = [p for p in params if p]
+    outFileName = '.'.join(params)
+    if not outFileName:
+        outFileName = 'data'
+
+    if date:
+        date = datetime.datetime.strptime(date, '%Y%m%d')
+
+    responseData = find_forecast(
+        modelName=modelName,
+        forecastGroup=group,
+        date=date,
+        hour=hour,
+        dataType=dataType
+    )
+
+    fileExtension = '.geojson'
+    contentType = 'application/json'
+    if dataType == 'raster':
+        responseData = responseData.vsi_buffer
+        contentType = 'image/tiff'
+        fileExtension = '.tif'
+
+    response = HttpResponse(
+        responseData,
+        content_type=contentType,
+    )
+    outFileName = outFileName + fileExtension
+    response['Content-Disposition'] = f'attachment; filename="{outFileName}"'
+    return response
+
+
+@api_view(['GET'])
+def get_dates(request):
+    modelName = request.GET.get('model', None)
+    data = VectorForecast.objects.filter(model__name=modelName)
+    data = data.distinct('forecast_date')
+    # data = data.annotate(
+    #     formatted_date=Func(
+    #         F('forecast_date'),
+    #         Value('YYYY-MM-DD'),
+    #         function='to_char',
+    #         output_field=CharField()
+    #     )
+    # )
+    # dates = data.values_list('formatted_date', flat=True)
+    s = VectorForecastDatesSerializer(data, many=True)
+    return JsonResponse(s.data, safe=False)
+    # return JSONRenderer().render(dates)
+
+
+@api_view(['GET'])
+def get_indexes(request):
+    modelName = request.GET.get('model', None)
+    data = ForecastModel.objects.get(name=modelName)
+    indexes = [str(i) for i in  data.indexes[1:-1].split(',')]
+    return JsonResponse({'indexes': indexes}, safe=False)
+
+
+@api_view(['GET'])
+def get_legend(request):
+    modelName = request.GET.get('model', None)
+    group = request.GET.get('group', None)
+    data = Calculation.objects.filter(model__name=modelName, forecast_group__name=group)
+    s = LegendSerializer(data, many=True)
+    return JsonResponse(s.data, safe=False)
+
+
+@api_view(['GET'])
+def get_raster(request):
+    response = HttpResponse(get_remote_raster().vsi_buffer)
+    response['Content-Disposition'] = f'attachment; filename="test.tif"'
+    return response
 
 def web_app(request):
     context = {"value": "Hello Django", "message": "Welcome to Python"}
@@ -56,37 +143,3 @@ def debug_create_forecast(request):
                     date=date,
                 )
     return HttpResponse('ok')
-
-
-def get_forecast_by_date(request):
-    modelName = request.GET.get('model', None)
-    date = request.GET.get('date', None)
-    hour = request.GET.get('hour', None)
-    group = request.GET.get('group', None)
-    dataType = request.GET.get('dataType', 'vector')
-
-    if date:
-        date = datetime.datetime.strptime(date, '%Y%m%d')
-
-    if dataType == 'raster':
-        rst = find_forecast(
-            modelName=modelName,
-            forecastGroup=group,
-            date=date,
-            hour=hour,
-            dataType='raster'
-        )
-        response = HttpResponse(rst.vsi_buffer, content_type='image/tiff')
-        #response['Content-Disposition'] = 'attachment;filename="foo.tif"'
-
-        return response
-
-    return HttpResponse(
-        find_forecast(
-            modelName=modelName,
-            forecastGroup=group,
-            date=date,
-            hour=hour
-        ),
-        content_type='application/json',
-    )

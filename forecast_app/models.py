@@ -9,6 +9,8 @@ class ForecastModel(models.Model):
     geotransform = models.CharField(max_length=100, default='(34.875, 0.25, 0.0, 65.125, 0.0, -0.25)')
     rasterWidth = models.PositiveIntegerField(default=161)
     rasterHeight = models.PositiveIntegerField(default=61)
+    # TODO вынести в отдельную таблицу
+    indexes = models.CharField(max_length=500, null=True)
 
     def __str__(self):
         return self.name
@@ -99,7 +101,7 @@ class VectorForecast(InfoMixin, ForecastBaseMixin):
     # Django specific
     mpoly = models.PolygonField(verbose_name="Геометрия", srid=4326)
     # TODO дублирование с calculation
-    code = models.PositiveIntegerField(verbose_name="Уровень риска")
+    level_code = models.PositiveIntegerField(verbose_name="Уровень риска")
 
     def __str__(self):
         return f'vector - {self.forecast_group.alias} - {self.date_UTC_full}'
@@ -120,6 +122,8 @@ class Calculation(ForecastBaseMixin):
     code = models.PositiveIntegerField(verbose_name="Уровень риска")
     expression = models.CharField(max_length=500)
     variables = models.ManyToManyField(Variable)
+    color = models.CharField(max_length=50, default='')
+    alias = models.CharField(max_length=200, default='')
 
     def __str__(self):
         return f'{self.forecast_group} - {self.code} - {self.expression}'
