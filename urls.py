@@ -13,6 +13,8 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+import asyncio
+
 from django.contrib import admin
 from django.urls import path, include
 
@@ -21,7 +23,7 @@ from forecast_app.views import debug_create_forecast, web_app
 urlpatterns = [
     path('api/v1/', include('forecast_app.urls')),
     path('api/v1/auth/', include('auth_app.urls')),
-    path('api/v1/informer_app', include('informer_app.urls')),
+    path('api/v1/informer/', include('informer_app.urls')),
     path('admin/', admin.site.urls),
     path('', web_app),
     path('test_debug/', debug_create_forecast)

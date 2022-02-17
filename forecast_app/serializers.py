@@ -4,8 +4,8 @@ from .models import ForecastModel, ForecastGroup, Calculation
 
 
 class ForecastModelSerializer(serializers.BaseSerializer):
-    data = {"models": ForecastModel.objects.all().values_list('name', flat=True)}
-
+    data = {'models': ['gfs', 'icon']}
+    #data = {"models": ForecastModel.objects.all().values_list('name', flat=True)}
 
 
 class CalculationSerializer(serializers.BaseSerializer):
@@ -13,8 +13,6 @@ class CalculationSerializer(serializers.BaseSerializer):
 
     def to_representation(self, instance):
         return {'name': instance.forecast_group.name, 'alias': instance.forecast_group.alias}
-
-
 
 
 # class ForecastGroupSerializer(serializers.ModelSerializer):
@@ -37,3 +35,16 @@ class ForecastGroupSerializer(serializers.RelatedField):
 #
 #     def get_group(self, instance):
 #         return {'name': instance.forecast_group.name, 'alias': instance.forecast_group.alias}
+
+class VectorForecastDatesSerializer(serializers.ModelSerializer):
+    def to_representation(self, instance):
+        return instance.forecast_date.strftime('%Y-%m-%d')
+
+
+class LegendSerializer(serializers.BaseSerializer):
+    def to_representation(self, instance):
+        return {
+            'levelCode': instance.code,
+            'alias': instance.alias,
+            'color': instance.color
+        }
