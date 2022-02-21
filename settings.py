@@ -40,8 +40,11 @@ INSTALLED_APPS = [
     'django.contrib.gis',
     'django_celery_results',
     'rest_framework',
+    'rest_framework_simplejwt',
     'corsheaders',
     'forecast_app',
+    'auth_app',
+    'informer_app',
     'raster',
 ]
 
@@ -77,9 +80,17 @@ TEMPLATES = [
 WSGI_APPLICATION = 'wsgi.application'
 
 
+# DRF
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+}
+
 #CORS_ORIGIN_ALLOW_ALL = False
 CORS_ORIGIN_WHITELIST = (
     'http://localhost:8080',
+    'http://127.0.0.1:8000'
 )
 
 # Database
@@ -114,6 +125,18 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# JWT
+SIMPLE_JWT = {
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': 'SECRET_KEY',
+    'VERIFYING_KEY': 'VERIFY_KEY',
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'user_id',
+    # TODO сам руками забил, без него не парсился токен
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
+}
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.0/topics/i18n/
@@ -136,7 +159,7 @@ RASTER_USE_CELERY = False
 
 STATIC_URL = 'static/'
 STATIC_ROOT = 'var/static_root/'
-STATICFILES_DIRS = ['static']
+#STATICFILES_DIRS = ['static']
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field

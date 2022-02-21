@@ -3,6 +3,7 @@ import datetime
 from django.contrib.gis.gdal import GDALRaster
 
 from django.shortcuts import render
+from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
@@ -116,6 +117,7 @@ def get_raster(request):
     response = HttpResponse(get_remote_raster().vsi_buffer)
     response['Content-Disposition'] = f'attachment; filename="test.tif"'
     return response
+
 
 def web_app(request):
     context = {"value": "Hello Django", "message": "Welcome to Python"}
