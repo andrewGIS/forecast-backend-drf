@@ -1,7 +1,7 @@
 import os
 from celery import Celery
-
 # Set the default Django settings module for the 'celery' program.
+
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'settings')
 
 app = Celery('app_drf')
@@ -17,4 +17,12 @@ app.loader.override_backends['django-db'] = 'django_celery_results.backends.data
 
 # Load task modules from all registered Django apps.
 # django-raster cause problem so i comment it
-#app.autodiscover_tasks()
+# app.autodiscover_tasks()
+# app.tasks.register(forecast_app.tasks.test)
+app.conf.beat_schedule = {
+    'add-every-30-seconds': {
+        'task': 'testTask',
+        'schedule': 30.0,
+        'args': (16, 16)
+    },
+}

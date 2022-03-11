@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.gis',
     'django_celery_results',
+    'django_extensions',
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
@@ -168,4 +169,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Celery configs
 CELERY_RESULT_BACKEND = 'django-db'
+# So autodiscover task is failed by django raster manually add tasks
+CELERY_IMPORTS = ['forecast_app.tasks']
 
