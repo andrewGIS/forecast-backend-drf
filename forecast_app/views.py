@@ -14,7 +14,7 @@ from .models import (
 from .serializers import ForecastModelSerializer, CalculationSerializer, VectorForecastDatesSerializer, LegendSerializer
 
 from django.http import HttpResponse, JsonResponse
-from .services import create_forecast, find_forecast, get_remote_raster
+from .services import create_forecast, find_forecast, get_remote_raster, save_remote_raster_to_db
 
 
 @api_view(['GET'])
@@ -120,6 +120,7 @@ def get_raster(request):
 
 
 def web_app(request):
+    # TODO sample how to transfer some data to template
     context = {"value": "Hello Django", "message": "Welcome to Python"}
     return render(request, 'forecast_app/index.html', context)
 
@@ -143,5 +144,21 @@ def debug_create_forecast(request):
                     groupName='squall',
                     forecastType=fType,
                     date=date,
+                )
+    return HttpResponse('ok')
+
+
+def debug_save_index(request):
+    base = datetime.datetime(2021, 5, 4)
+    date_list = [base - datetime.timedelta(days=x) for x in range(1)]
+    for date in date_list:
+        for hour, hour in InfoMixin.FORECAST_UTC_HOURS_CHOICES:
+            for fType in ['00', '12']:
+                date = date.replace(hour=int(hour))
+                save_remote_raster_to_db(
+                    modelName='gfs',
+                    indexName='dls',
+                    forecastType=fType,
+                    date=date
                 )
     return HttpResponse('ok')

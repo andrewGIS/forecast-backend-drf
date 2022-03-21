@@ -18,7 +18,7 @@ def create_notification(request):
     if response is not None:
         # unpacking
         user, token = response
-        print (user, token['user_id'])
+        #print(user, token['user_id'])
         user_id = token['user_id']
         user = User.objects.get(id=user_id)
         # x -> долгота y-> широта

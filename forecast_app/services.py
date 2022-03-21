@@ -11,8 +11,14 @@ from django.core.serializers import serialize
 from osgeo import gdal, osr, ogr
 from raster.algebra.parser import FormulaParser
 
-from forecast_app.models import VectorForecast, RasterForecast, ForecastGroup, Calculation, ForecastModel
-from forecast_app.models import InfoMixin
+from forecast_app.models import (
+    VectorForecast,
+    RasterForecast,
+    ForecastGroup,
+    Calculation,
+    ForecastModel,
+    IndexRaster
+)
 
 
 def find_forecast(
@@ -82,8 +88,8 @@ def find_forecast(
 
     # на фронте ждем это поле для подписей
     return serialize('geojson', data, geometry_field='mpoly', fields=('level_code',))
-    #return serialize('geojson', data, geometry_field='mpoly')
-    #return serialize('geojson', data, geometry_field='mpoly')
+    # return serialize('geojson', data, geometry_field='mpoly')
+    # return serialize('geojson', data, geometry_field='mpoly')
 
 
 def calc_path(
@@ -138,10 +144,8 @@ def create_forecast(
 
     # На всякий слуачай проверяем что час пронгоза есть в нашем перечне
     hourDB = date.strftime('%H')  # час прогноза -> 03, 12 так представляем в базе
-    assert (
-        hourDB in InfoMixin.FORECAST_UTC_HOURS_CHOICES,
-        f'Неизвестный час {hourDB}, известные {InfoMixin.FORECAST_UTC_HOURS_CHOICES}'
-    )
+    # assert (hourDB in InfoMixin.FORECAST_UTC_HOURS_CHOICES,
+    #         f'Неизвестный час {hourDB}, известные {InfoMixin.FORECAST_UTC_HOURS_CHOICES}')
 
     # Общие атрибуты для прогнозов
     generalOptions = {
@@ -158,36 +162,74 @@ def create_forecast(
     # шторма)
     levels = []
     for calculation in forecastGroupCalculations:
-        data = {}
-        # Считываем исходные данные для расчетов
-        for d in calculation.variables.all():
-            srcPath = calc_path(
-                    indexName=d.index_name,
-                    forecastType=forecastType,
-                    hour=hourForecast,
-                    date=date,
-                    modelName=forecastModel.name
-            )
-            data[d.variable] = GDALRaster(srcPath).bands[0].data()
-
-        # Используем Formula Parser, потому что RasterAlgebraParse не правильно
-        # записывает значения когда получаются логические значения
-        # при ипользовании FormulaParser можно привести к определленному типу
-        # parser = RasterAlgebraParser()
-        # calculated = parser.evaluate_raster_algebra(data, squall.expression)
-        # но приходится тянуть дополнительные метаданные модели
-        parser = FormulaParser()
-        calculated = (parser.evaluate(data, calculation.expression)).astype(np.uint8)
-
-        # заменяем код на уровень риска
-        calculated = np.where(calculated == 0, 0, calculation.code)
+        calculated = perform_calculation(
+            forecastType=forecastType,
+            hourForecast=hourForecast,
+            forecastModel=forecastModel,
+            calculation=calculation,
+            date=date
+        )
         levels.append(calculated)
 
     # select most danger group for each pixel
     result = np.stack(levels, axis=2)
 
+    # save raster forecast to db
+    save_forecast_raster(result, **generalOptions)
+
+    # Векторизация
+    raster2vector(result, forecastModel)
+
+
+def perform_calculation(
+        forecastType,
+        hourForecast,
+        forecastModel: ForecastModel,
+        calculation: Calculation,
+        date
+) -> np.array:
+    """
+    Выполняем расчет одного выражения
+    :param calculation:
+    :return: результат вычисления
+    """
+
+    data = {}
+    for d in calculation.variables.all():
+        srcPath = calc_path(
+            indexName=d.index_name,
+            forecastType=forecastType,
+            hour=hourForecast,
+            date=date,
+            modelName=forecastModel.name
+        )
+        data[d.variable] = GDALRaster(srcPath).bands[0].data()
+
+    # Используем Formula Parser, потому что RasterAlgebraParse не правильно
+    # записывает значения когда получаются логические значения
+    # при ипользовании FormulaParser можно привести к определленному типу
+    # parser = RasterAlgebraParser()
+    # calculated = parser.evaluate_raster_algebra(data, squall.expression)
+    # но приходится тянуть дополнительные метаданные модели
+    parser = FormulaParser()
+    calculated = (parser.evaluate(data, calculation.expression)).astype(np.uint8)
+
+    # заменяем код на уровень риска
+    calculated = np.where(calculated == 0, 0, calculation.code)
+    return calculated
+
+
+def save_forecast_raster(inArrayData: np.array, forecastModel: ForecastModel, **kwargs):
+    """
+
+    :param inArrayData: Входные данные в виде массива, где каждый канал это уровень риска (1, 2, 3 ,4 )
+    :param forecastModel:
+    :param kwargs: Общие параметры InfoMixin
+    :return:
+    """
+
     # need mask for zero values
-    result = np.ma.masked_equal(result, 0)
+    result = np.ma.masked_equal(inArrayData, 0)
     result = result.min(axis=2)
     result = result.filled(fill_value=0)
 
@@ -210,9 +252,21 @@ def create_forecast(
     outRaster.geotransform = [float(i) for i in transform[1:-1].split(',')]
     r = RasterForecast(
         raster=outRaster,
-        **generalOptions
+        **kwargs
     )
     r.save()
+
+
+def raster2vector(inArrayData: np.array, forecastModel: ForecastModel, *args, **kwargs):
+    """
+
+    :param forecastModel:
+    :param inArrayData:
+    :param inRaster:
+    :param args:
+    :param kwargs: Общие параметры прогноза
+    :return:
+    """
 
     # Растр для векторизации
     outSpatialRef = osr.SpatialReference()
@@ -226,8 +280,9 @@ def create_forecast(
         gdal.GDT_Byte
     )
     dstDs.SetProjection(outSpatialRef.ExportToWkt())
+    transform = forecastModel.geotransform
     dstDs.SetGeoTransform([float(i) for i in transform[1:-1].split(',')])
-    dstDs.GetRasterBand(1).WriteArray(result.astype(np.uint8))
+    dstDs.GetRasterBand(1).WriteArray(inArrayData.astype(np.uint8))
 
     # Создание вектора
     driver = ogr.GetDriverByName("Memory")
@@ -239,7 +294,7 @@ def create_forecast(
     outLayer.CreateField(newField)
 
     # Polygonize
-    band = dstDs.GetRasterBand(1)
+    band = inRaster.GetRasterBand(1)
     gdal.Polygonize(band, band, outLayer, 0, [], callback=None)
 
     # Записываем каждую отдельную фичу
@@ -248,17 +303,62 @@ def create_forecast(
         v = VectorForecast(
             mpoly=GEOSGeometry(geom, srid=4326),
             code=feature.GetField("level_risk"),
-            **generalOptions
+            **kwargs
         )
         v.save()
 
     outLayer.ResetReading()  # по моему для следующей нормальной векторизации
 
     outDataSource.Destroy()
-    dstDs = None
+    inRaster = None
+
+
+def save_remote_raster_to_db(modelName, indexName, forecastType, date: datetime.datetime):
+    """
+    Batch get raster and save to db
+    """
+    forecastModel = ForecastModel.objects.get(name=modelName)
+    fullDateUTC = date.strftime(f'%Y%m%d{forecastType}.0%H')  # получаем дату с часов прогноза -> 2021072100.003
+    hourForecast = date.strftime('0%H')  # час прогноза -> 003, 012 так представлено в исходных растрах
+
+    srcString = calc_path(
+        indexName=indexName,
+        hour=hourForecast,
+        forecastType=forecastType,
+        modelName=modelName,
+        date=date
+    )
+
+    data = GDALRaster(srcString).bands[0].data()
+    rst = GDALRaster({
+        'nr_of_bands': 1,
+        'width': forecastModel.rasterWidth,
+        'height': forecastModel.rasterHeight,
+        'srid': 4326,
+        'bands': [{'data': data}]
+    })
+    gt = forecastModel.geotransform
+    rst.geotransform = [float(i) for i in gt[1:-1].split(',')]
+
+    options = {
+        'model': forecastModel,
+        'date_UTC_full': fullDateUTC,
+        'forecast_date': date,
+        'forecast_type': forecastType,
+        'forecast_datetime_utc': date,
+        'forecast_hour_utc': int(hourForecast),
+        # 'raster': rst
+    }
+    indexRaster = IndexRaster(raster=rst, **options)
+    indexRaster.save()
 
 
 def get_remote_raster():
+    """
+    Sample how to return raster for leaflet tif
+    https://ihcantabria.github.io/Leaflet.CanvasLayer.Field/dist/leaflet.canvaslayer.field.js
+    :return:
+    """
     modelName = 'gfs'
     model = ForecastModel.objects.get(name=modelName)
     srcString = calc_path(

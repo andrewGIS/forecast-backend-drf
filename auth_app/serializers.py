@@ -4,6 +4,7 @@ from rest_framework.validators import UniqueValidator
 from django.contrib.auth.password_validation import validate_password
 
 from auth_app.models import Person
+from rest_framework_simplejwt.tokens import RefreshToken
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -22,8 +23,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Person
-        #fields = '__all__'
-        fields = ('username','password', 'telegram_login')
+        fields = ('username', 'password', 'telegram_login')
 
     # def validate(self, attrs):
     #     if attrs['password'] != attrs['password2']:
@@ -41,4 +41,11 @@ class RegisterSerializer(serializers.ModelSerializer):
         person = Person.objects.create(user=user, telegram_login=validated_data['telegram_login'])
         person.save()
 
-        return person
+        #return person
+
+        refresh = RefreshToken.for_user(user)
+        return {
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+        }
+
