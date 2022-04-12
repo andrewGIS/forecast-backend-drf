@@ -1,13 +1,34 @@
 volumes:
   geo-db-data:
 services:
-  postgis_db:
-    container_name: geo_db
-    environment:
-      POSTGRES_USER: gis
-      POSTGRES_PASS: gis
-    image: kartoza/postgis
-    ports:
-      - "25432:5432"
-    volumes:
-      - geo-db-data:/var/lib/postgresql
+#  postgis_db:
+#    container_name: geo_db
+#    environment:
+#      POSTGRES_USER: gis
+#      POSTGRES_PASS: gis
+#    image: kartoza/postgis
+#    ports:
+#      - "25432:5432"
+#    volumes:
+#      - geo-db-data:/var/lib/postgresql
+    redis:
+      container_name: redis-db
+      image: redis:latest
+    api-beat:
+      container_name: sheduler
+      command: celery -A celery_worker.celery worker --pool=solo --loglevel=info
+      depends_on:
+        - redis
+    api-worker:
+      container_name: worker
+      command: celery -A celery_worker.celery worker --pool=solo --loglevel=info
+      depends_on:
+        - api-beat
+    app:
+      env_file:
+        - develop.env
+      depends_on:
+        - api-beat
+        - api-worker
+
+
