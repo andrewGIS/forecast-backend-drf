@@ -1,10 +1,10 @@
-volumes:
-  geo-db-data:
+version: "3.8"
+
 services:
     redis:
       container_name: redis-db
       image: redis:latest
-    app:
+    main-app:
       container_name: main-app
       env_file:
         - develop.env
@@ -14,18 +14,22 @@ services:
         - redis
       ports:
       - 8000:8000
-#    api-beat:
-#      container_name: sheduler
-#      image: app_drf:latest
-#      command: celery -A forecast_app.tasks.app  beat --loglevel=info
-#      depends_on:
-#        - main-app
-#    api-worker:
-#      container_name: worker
-#      image: app_drf:latest
-#      command: celery -A celery_app worker --pool=solo --loglevel=info
-#      depends_on:
-#        - main-app
+    api-beat:
+      container_name: sheduler
+      env_file:
+        - develop.env
+      image: app_drf:latest
+      command: celery -A celery_app beat --loglevel=info
+      depends_on:
+        - main-app
+    api-worker:
+      container_name: worker
+      env_file:
+        - develop.env
+      image: app_drf:latest
+      command: celery -A celery_app worker --pool=solo --loglevel=info
+      depends_on:
+        - main-app
 
 
 
