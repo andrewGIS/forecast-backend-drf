@@ -21,14 +21,14 @@ django-cors-headers==3.11.0
 django-raster==0.8.1
 djangorestframework==3.13.1
 djangorestframework-simplejwt==5.0.0
-GDAL @ file:///D:/Work/_new_features/forecast/app_drf/GDAL-3.3.1-cp38-cp38-win_amd64.whl
+# GDAL @ file:///D:/Work/_new_features/forecast/app_drf/GDAL-3.3.1-cp38-cp38-win_amd64.whl
 jmespath==0.10.0
 kombu==5.2.3
 numpy==1.22.1
 packaging==21.3
 Pillow==9.0.0
 prompt-toolkit==3.0.24
-psycopg2==2.9.3
+psycopg2-binary
 pyaes==1.6.1
 pyasn1==0.4.8
 PyJWT==2.3.0
@@ -89,9 +89,9 @@ prometheus-client==0.13.1
 pure-eval==0.2.2
 pycparser==2.21
 Pygments==2.11.2
-pyrsistent==0.18.1
-pywin32==303
-pywinpty==2.0.5
+#pyrsistent==0.18.1
+#pywin32==303
+#pywinpty==2.0.5
 pyzmq==22.3.0
 Send2Trash==1.8.0
 stack-data==0.2.0
