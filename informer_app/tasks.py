@@ -13,7 +13,7 @@ async def main(message='Testing telethon'):
     api_hash = '53007e6795449acea2e68919f1e89a17'
     bot_id = '5157309405:AAHnxLw2PHyVcQgO8qamEJbcM_y28XcqSwE'
     async with TelegramClient(bot_id, app_id, api_hash) as client:
-        await client.send_message('@antar93', message)
+        await client.send_message(telegramLogin, message)
 
 
 @app.task(name="send_notification")
@@ -28,17 +28,28 @@ def send_notifications():
     from informer_app.models import InfoPoint
     accountsWithLogins = Person.objects.filter(telegram_login__isnull=False)
     for account in accountsWithLogins:
-        # TODO пока берем только одну точку
+        # TODO пока берем только одну точку у пользователя
         targetPoint = InfoPoint.objects.filter(user=account.user)[0]
+        # TODO брать буфер вокруг точки
         userForecasts = VectorForecast.objects.filter(
-            forecast_date=date(2021, 5, 15),
-            # mpoly__intercests=targetPoint.point
+            forecast_date=datetime.now().date(),
+            #forecast_date=date(2021, 5, 15),
+            #mpoly__intercests=targetPoint.point
         )
         userForecasts = userForecasts.order_by('forecast_datetime_utc')
         userForecasts = userForecasts.distinct('level_code', 'model', 'forecast_datetime_utc')
 
-        level_codes = set(userForecasts.values_list('level_code', flat=True))
         message = ''
+
+        if userForecasts.count() == 0:
+            asyncio.run(main(
+                account.telegram_login,
+                'По текущему прогнозу для вашей области интереса опасных явлений не обнаружено'
+            ))
+            return 'Not event founded'
+
+        # какие вообще уровни есть для нашего пользователя
+        level_codes = set(userForecasts.values_list('level_code', flat=True))
         for level_code in sorted(level_codes):
             message += '\n'
             emoji = None
@@ -57,9 +68,8 @@ def send_notifications():
             for f in userForecasts.filter(level_code=level_code):
                 message += (
                         f"Время - {f.forecast_datetime_utc.strftime('%H:%M')};"
-                        f" Явление -  {f.forecast_group.alias};" +
-                        f" Модель - {f.model.name} \n"
+                        f" Явление -  {f.forecast_group.alias}; \n"
                 )
 
-        asyncio.run(main(message))
+        asyncio.run(main(account.telegram_login, message))
         return message
