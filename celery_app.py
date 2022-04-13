@@ -24,11 +24,6 @@ app.loader.override_backends['django-db'] = 'django_celery_results.backends.data
 # app.tasks.register(forecast_app.tasks.test)
 # TODO время по Пермскому времени как сервер
 app.conf.beat_schedule = {
-    'add-every-30-seconds': {
-        'task': 'testTask',
-        'schedule': 30.0,
-        'args': (16, 16)
-    },
     'get-forecast-gfs-00': {
         'task': 'create_forecast_for_model',
         'schedule': crontab(hour=15, minute=30),

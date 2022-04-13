@@ -86,7 +86,7 @@ def find_forecast(
         rst.geotransform = data[0].raster.geotransform
         return rst
 
-    # на фронте ждем это поле для подписей
+    # на фронте ждем поле level code для подписей
     return serialize('geojson', data, geometry_field='mpoly', fields=('level_code',))
     # return serialize('geojson', data, geometry_field='mpoly')
     # return serialize('geojson', data, geometry_field='mpoly')
