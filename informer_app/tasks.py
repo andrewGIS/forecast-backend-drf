@@ -1,4 +1,5 @@
-from datetime import date
+import os
+from datetime import date, datetime
 
 from telethon import TelegramClient
 import asyncio
@@ -8,10 +9,10 @@ from celery_app import app
 from forecast_app.models import VectorForecast
 
 
-async def main(message='Testing telethon'):
-    app_id = 17386428;
-    api_hash = '53007e6795449acea2e68919f1e89a17'
-    bot_id = '5157309405:AAHnxLw2PHyVcQgO8qamEJbcM_y28XcqSwE'
+async def main(telegramLogin='@antar93',  message='Testing telethon'):
+    app_id = int(os.getenv('NOTIFICATION_APP_ID', None))
+    api_hash = os.getenv('NOTIFICATION_APP_HASH', None)
+    bot_id = os.getenv('NOTIFICATION_BOT_ID', None)
     async with TelegramClient(bot_id, app_id, api_hash) as client:
         await client.send_message(telegramLogin, message)
 
@@ -24,7 +25,7 @@ def run_main(message):
 
 @app.task(name="send_notifications")
 def send_notifications():
-    from forecast_app.services import find_forecast
+    # TODO пока оповещение можно делать по gfs модели
     from informer_app.models import InfoPoint
     accountsWithLogins = Person.objects.filter(telegram_login__isnull=False)
     for account in accountsWithLogins:

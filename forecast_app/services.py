@@ -173,9 +173,13 @@ def create_forecast(
 
     # select most danger group for each pixel
     result = np.stack(levels, axis=2)
+    # все в одноканальном растре выбран саммый высокий риск опасности
+    result = np.ma.masked_equal(result, 0)
+    result = result.min(axis=2)
+    result = result.filled(fill_value=0)
 
     # save raster forecast to db
-    save_forecast_raster(result, **generalOptions)
+    save_forecast_raster(result, forecastModel, **generalOptions)
 
     # Векторизация
     raster2vector(result, forecastModel)
@@ -190,6 +194,10 @@ def perform_calculation(
 ) -> np.array:
     """
     Выполняем расчет одного выражения
+    :param date:
+    :param forecastModel:
+    :param hourForecast:
+    :param forecastType:
     :param calculation:
     :return: результат вычисления
     """
@@ -228,11 +236,6 @@ def save_forecast_raster(inArrayData: np.array, forecastModel: ForecastModel, **
     :return:
     """
 
-    # need mask for zero values
-    result = np.ma.masked_equal(inArrayData, 0)
-    result = result.min(axis=2)
-    result = result.filled(fill_value=0)
-
     # Итоговый растр
     outRaster = GDALRaster({
         'nr_of_bands': 1,
@@ -241,7 +244,7 @@ def save_forecast_raster(inArrayData: np.array, forecastModel: ForecastModel, **
         'srid': 4326,
         'datatype': 1,
         'bands': [{
-            'data': result.astype(np.uint8),  # без приведения значения неправильные записывались
+            'data': inArrayData.astype(np.uint8),  # без приведения значения неправильные записывались
             'nodata_value': 255
         }]
     })
@@ -257,13 +260,11 @@ def save_forecast_raster(inArrayData: np.array, forecastModel: ForecastModel, **
     r.save()
 
 
-def raster2vector(inArrayData: np.array, forecastModel: ForecastModel, *args, **kwargs):
+def raster2vector(inArrayData: np.array, forecastModel: ForecastModel, **kwargs):
     """
 
     :param forecastModel:
     :param inArrayData:
-    :param inRaster:
-    :param args:
     :param kwargs: Общие параметры прогноза
     :return:
     """
@@ -294,7 +295,7 @@ def raster2vector(inArrayData: np.array, forecastModel: ForecastModel, *args, **
     outLayer.CreateField(newField)
 
     # Polygonize
-    band = inRaster.GetRasterBand(1)
+    band = dstDs.GetRasterBand(1)
     gdal.Polygonize(band, band, outLayer, 0, [], callback=None)
 
     # Записываем каждую отдельную фичу
@@ -302,7 +303,7 @@ def raster2vector(inArrayData: np.array, forecastModel: ForecastModel, *args, **
         geom = feature.GetGeometryRef().ExportToWkt()
         v = VectorForecast(
             mpoly=GEOSGeometry(geom, srid=4326),
-            code=feature.GetField("level_risk"),
+            level_code=feature.GetField("level_risk"),
             **kwargs
         )
         v.save()
