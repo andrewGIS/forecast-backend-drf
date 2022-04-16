@@ -1,18 +1,16 @@
 import datetime
-
-import numpy as np
+from typing import Literal
 
 from celery_app import app
 
 from .models import InfoMixin, ForecastModel, Calculation
-from .services import perform_calculation, save_forecast_raster, raster2vector
+from .services import create_forecast
 
 
 @app.task(name="create_forecast_for_model")
-def create_forecast_for_model(forecastModelName, forecastType):
+def create_forecast_for_model(forecastModelName: str, forecastType: Literal['00', '12']):
     """
     Вычисление для модели для сегодняшнего дня для всех часов для всех групп
-    :param forecastDate: Дата для расчета прогноза
     :param forecastModelName: Модель для расчета
     :param forecastType: 00 и 12 от какого срока прогноз
     :return:
@@ -20,68 +18,18 @@ def create_forecast_for_model(forecastModelName, forecastType):
     forecastModel = ForecastModel.objects.get(name=forecastModelName)
     # Это получение моделей только для одной группы
     calculations = Calculation.objects.filter(model=forecastModel)
-    #date_today = datetime.datetime.now().date()
-    date_today = datetime.datetime.now().date() - datetime.timedelta(days=1)
+    date_today = datetime.datetime.now().date()
     date = datetime.datetime(date_today.year, date_today.month, date_today.day)  # для того чтобы можно заменить час
 
-    # На всякий слуачай проверяем что час пронгоза есть в нашем перечне
-
-    # assert (hourDB in InfoMixin.FORECAST_UTC_HOURS_CHOICES,
-    #         f'Неизвестный час {hourDB}, известные {InfoMixin.FORECAST_UTC_HOURS_CHOICES}')
-
-    # Получаем какие у нас группы есть для текущей группы
-    for forecastGroup in [q.forecast_group for q in calculations]:
-
+    # Получаем какие у нас группы есть для текущей группы (штормы, смерчи и т.д.)
+    # группы можем получить только из вычислений, которые привязаны к модели
+    for calculation in calculations:
         # расчеты для каждого часа
         for hour, hour in InfoMixin.FORECAST_UTC_HOURS_CHOICES:
             date = date.replace(hour=int(hour))
-            hourDB = date.strftime('%H')  # час прогноза -> 03, 12 так представляем в базе
-            hourForecast = date.strftime('0%H')  # час прогноза -> 003, 012 так представлено в исходных растрах
-            fullDateUTC = date.strftime(f'%Y%m%d{forecastType}.0%H')  # получаем дату с часов прогноза -> 2021072100.003
-            levels = []
-            # Общие атрибуты для прогнозов
-            generalOptions = {
-                'model': forecastModel,
-                'forecast_group': forecastGroup,
-                'date_UTC_full': fullDateUTC,
-                'forecast_date': date,
-                'forecast_type': forecastType,
-                'forecast_datetime_utc': date,
-                'forecast_hour_utc': hourDB
-            }
-            for calculation in calculations.filter(forecast_group=forecastGroup):
 
-                # Расчет значений для всех уровней опасности для
-                # одной группы и выбранной модели(например для всех
-                # уровней опасности для шторма)
-                calculated = perform_calculation(
+            create_forecast(
                     forecastType=forecastType,
-                    hourForecast=hourForecast,
-                    forecastModel=forecastModel,
-                    calculation=calculation,
-                    date=date
+                    date=date,
+                    groupName=calculation.forecast_group.name
                 )
-                levels.append(calculated)
-
-            # select most danger group for each pixel
-            # уровень опасности в каждом канале
-            result = np.stack(levels, axis=2)
-
-            # все в одноканальном растре выбран саммый высокий риск опасности
-            result = np.ma.masked_equal(result, 0)
-            result = result.min(axis=2)
-            result = result.filled(fill_value=0)
-
-            # save raster forecast to db
-            save_forecast_raster(
-                inArrayData=result,
-                forecastModel=forecastModel,
-                **generalOptions
-            )
-
-            # Векторизация
-            raster2vector(
-                inArrayData=result,
-                forecastModel=forecastModel,
-                **generalOptions
-            )

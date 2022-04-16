@@ -5,7 +5,7 @@ import numpy as np
 from django.contrib.gis.gdal import GDALRaster
 from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.measure import D
-from typing import Tuple, Dict, Optional, List, Union
+from typing import Tuple, Dict, Optional, List, Union, Literal, Type
 
 from django.core.serializers import serialize
 from osgeo import gdal, osr, ogr
@@ -123,22 +123,22 @@ def calc_path(
 
 
 def create_forecast(
-        forecastType: str,
+        forecastType: Literal['00', '12'],
         date: datetime.datetime,
-        groupName: Optional[str] = None,
+        groupName: str,
 ):
     """
-    Расчет прогноза для одного конкретного срока
+    Расчет прогноза для одного конкретного срока для одной группы явлений
     Все расчеты ведем в UTC time
-    :param forecastType:
+    :param forecastType: Тип прогноза оз полночи или от полудня
     :param date: Точная дата прогноза с часом в UTC
-    :param groupName:
+    :param groupName: Имя группы явлений для расчета (шторм, смерч и т.д.)
     :return:
     """
 
-    forecastGroup = ForecastGroup.objects.get(name=groupName) if groupName else ForecastGroup.objects.all()[0]
-    forecastGroupCalculations: List[Calculation] = list(Calculation.objects.filter(forecast_group=forecastGroup))
-    forecastModel = forecastGroupCalculations[0].model  # каждый уровень опасности рассчитывается для одной модели
+    forecastGroup = ForecastGroup.objects.get(name=groupName)
+    forecastGroupCalculations: List[Calculation] = Calculation.objects.filter(forecast_group=forecastGroup)
+    forecastModel = forecastGroupCalculations[0].model  # каждый
     fullDateUTC = date.strftime(f'%Y%m%d{forecastType}.0%H')  # получаем дату с часов прогноза -> 2021072100.003
     hourForecast = date.strftime('0%H')  # час прогноза -> 003, 012 так представлено в исходных растрах
 
@@ -167,7 +167,8 @@ def create_forecast(
             hourForecast=hourForecast,
             forecastModel=forecastModel,
             calculation=calculation,
-            date=date
+            date=date,
+            save_index_rasters=True
         )
         levels.append(calculated)
 
@@ -182,23 +183,25 @@ def create_forecast(
     save_forecast_raster(result, forecastModel, **generalOptions)
 
     # Векторизация
-    raster2vector(result, forecastModel)
+    raster2dbvector(result, forecastModel, **generalOptions)
 
 
 def perform_calculation(
-        forecastType,
-        hourForecast,
-        forecastModel: ForecastModel,
+        forecastType: Literal['00', '12'],
+        hourForecast: Literal['00', '03', '06', '09', '12', '15', '18', '21', '24'],
+        forecastModel: Type[ForecastModel],
         calculation: Calculation,
-        date
+        date: datetime.datetime,
+        save_index_rasters: bool,
 ) -> np.array:
     """
-    Выполняем расчет одного выражения
-    :param date:
+    Выполняем расчет одного полного выражения
+    :param save_index_rasters: Сохрнаять ли промежуточные растры из вычислений
+    :param date: Дата расчета
     :param forecastModel:
-    :param hourForecast:
-    :param forecastType:
-    :param calculation:
+    :param hourForecast: час для которого вычисляем
+    :param forecastType: тип прогноза который считаем
+    :param calculation: выражение для вычисления
     :return: результат вычисления
     """
 
@@ -212,6 +215,15 @@ def perform_calculation(
             modelName=forecastModel.name
         )
         data[d.variable] = GDALRaster(srcPath).bands[0].data()
+
+        if save_index_rasters:
+
+            save_remote_raster_to_db(
+                modelName=forecastModel.name,
+                indexName=d.index_name,
+                forecastType=forecastType,
+                date=date,
+            )
 
     # Используем Formula Parser, потому что RasterAlgebraParse не правильно
     # записывает значения когда получаются логические значения
@@ -227,12 +239,12 @@ def perform_calculation(
     return calculated
 
 
-def save_forecast_raster(inArrayData: np.array, forecastModel: ForecastModel, **kwargs):
+def save_forecast_raster(inArrayData: np.array, forecastModel: Type[ForecastModel], **kwargs):
     """
 
-    :param inArrayData: Входные данные в виде массива, где каждый канал это уровень риска (1, 2, 3 ,4 )
+    :param inArrayData: Входной одномерный массив, где пиксель уровень риска
     :param forecastModel:
-    :param kwargs: Общие параметры InfoMixin
+    :param kwargs: Общие параметры прогноза дата, время и т.д (InfoMixin)
     :return:
     """
 
@@ -260,11 +272,11 @@ def save_forecast_raster(inArrayData: np.array, forecastModel: ForecastModel, **
     r.save()
 
 
-def raster2vector(inArrayData: np.array, forecastModel: ForecastModel, **kwargs):
+def raster2dbvector(inArrayData: np.array, forecastModel: Type[ForecastModel], **kwargs):
     """
 
     :param forecastModel:
-    :param inArrayData:
+    :param inArrayData: Входной одномерный массив, где пиксель уровень риска
     :param kwargs: Общие параметры прогноза
     :return:
     """
@@ -314,9 +326,9 @@ def raster2vector(inArrayData: np.array, forecastModel: ForecastModel, **kwargs)
     inRaster = None
 
 
-def save_remote_raster_to_db(modelName, indexName, forecastType, date: datetime.datetime):
+def save_remote_raster_to_db(modelName: str, indexName: str, forecastType: Literal['00', '12'], date: datetime.datetime):
     """
-    Batch get raster and save to db
+    Get remote raster and save to db
     """
     forecastModel = ForecastModel.objects.get(name=modelName)
     fullDateUTC = date.strftime(f'%Y%m%d{forecastType}.0%H')  # получаем дату с часов прогноза -> 2021072100.003
@@ -348,7 +360,7 @@ def save_remote_raster_to_db(modelName, indexName, forecastType, date: datetime.
         'forecast_type': forecastType,
         'forecast_datetime_utc': date,
         'forecast_hour_utc': int(hourForecast),
-        # 'raster': rst
+        'index_name': indexName
     }
     indexRaster = IndexRaster(raster=rst, **options)
     indexRaster.save()
