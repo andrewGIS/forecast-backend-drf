@@ -12,7 +12,7 @@ from forecast_app.models import VectorForecast
 async def main(telegramLogin='@antar93',  message='Testing telethon'):
     app_id = int(os.getenv('NOTIFICATION_APP_ID', None))
     api_hash = os.getenv('NOTIFICATION_APP_HASH', None)
-    bot_id = os.getenv('NOTIFICATION_BOT_ID', None)
+    bot_id = os.getenv('NOTIFICATION_BOT_TOKEN', None)
     async with TelegramClient(bot_id, app_id, api_hash) as client:
         await client.send_message(telegramLogin, message)
 
@@ -25,6 +25,10 @@ def run_main(message):
 
 @app.task(name="send_notifications")
 def send_notifications():
+    """
+    Отправка оповещений всем пользователям с логином по интересующей точке
+    :return:
+    """
     # TODO пока оповещение можно делать по gfs модели
     from informer_app.models import InfoPoint
     accountsWithLogins = Person.objects.filter(telegram_login__isnull=False)
