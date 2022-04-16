@@ -1,3 +1,4 @@
+import datetime
 import os
 from celery import Celery
 
@@ -26,17 +27,17 @@ app.loader.override_backends['django-db'] = 'django_celery_results.backends.data
 app.conf.beat_schedule = {
     'get-forecast-gfs-00': {
         'task': 'create_forecast_for_model',
-        'schedule': crontab(hour=15, minute=30),
+        'schedule': crontab(hour=2, minute=50),
         'args': ('gfs', '00')
     },
     'get-forecast-gfs-12': {
         'task': 'create_forecast_for_model',
-        'schedule': crontab(hour=15, minute=30),
+        'schedule': crontab(hour=4, minute=30),
         'args': ('gfs', '12')
     },
     'get-forecast-icon-00': {
         'task': 'create_forecast_for_model',
-        'schedule': crontab(hour=15, minute=30),
+        'schedule': crontab(hour=14, minute=50),
         'args': ('icon', '00')
     },
     'get-forecast-icon-12': {
