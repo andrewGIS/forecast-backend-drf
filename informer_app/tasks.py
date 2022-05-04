@@ -13,8 +13,9 @@ async def main(telegramLogin='@antar93',  message='Testing telethon'):
     app_id = int(os.getenv('NOTIFICATION_APP_ID', None))
     api_hash = os.getenv('NOTIFICATION_APP_HASH', None)
     bot_id = os.getenv('NOTIFICATION_BOT_TOKEN', None)
-    async with TelegramClient(bot_id, app_id, api_hash) as client:
-        await client.send_message(telegramLogin, message)
+    client = TelegramClient('anon', app_id, api_hash)
+    await client.start(bot_token=bot_id)
+    await client.send_message(telegramLogin, message)
 
 
 @app.task(name="send_notification")
