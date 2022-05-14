@@ -30,7 +30,6 @@ class RegisterSerializer(serializers.ModelSerializer):
     #         raise serializers.ValidationError({"password": "Password fields didn't match."})
     #
     #     return attrs
-
     def create(self, validated_data):
         user = User.objects.create(
             username=validated_data['user']['username'],
@@ -41,11 +40,5 @@ class RegisterSerializer(serializers.ModelSerializer):
         person = Person.objects.create(user=user, telegram_login=validated_data['telegram_login'])
         person.save()
 
-        #return person
-
-        refresh = RefreshToken.for_user(user)
-        return {
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
-        }
+        return person
 
