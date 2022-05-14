@@ -5,3 +5,7 @@ from django.contrib.auth.models import User
 class InfoPoint(models.Model):
     point = models.PointField(srid=4326)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+    name = models.TextField(max_length=150)
+
+    def __str__(self):
+        return f'{self.user.get_full_name()} : {self.name}'
