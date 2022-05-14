@@ -15,8 +15,8 @@ app = Celery('app_drf')
 #   should have a `CELERY_` prefix.
 app.config_from_object('django.conf:settings', namespace='CELERY')
 
-#app.conf.broker_url = 'redis://localhost:6379/0' # когда разрабатываем локально редиску может не увидеть
-app.conf.broker_url = 'redis://redis:6379'
+# app.conf.broker_url = 'redis://localhost:6379/0' # когда разрабатываем локально редиску может не увидеть
+app.conf.broker_url = os.getenv("CELERY_BROKER_URL", 'redis://redis:6379')
 app.loader.override_backends['django-db'] = 'django_celery_results.backends.database:DatabaseBackend'
 
 # Load task modules from all registered Django apps.
