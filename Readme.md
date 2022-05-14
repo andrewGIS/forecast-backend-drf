@@ -49,3 +49,17 @@ python manage.py runserver
 2 Ссылки 
 * `localhost:8000\admin` - админка Django (`admin admin`)
 * `localhost:8000` - приложение
+
+### Разное
+* Запуск шелла в Anaconde
+
+install `ipython, notebook`
+```shell
+manage.py shell_plus --notebook
+```
+
+потом в ноутбуке выполнить 
+```python
+import os
+os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
+```
