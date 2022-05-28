@@ -7,6 +7,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
+from informer_app.tasks import send_notifications
 from .models import (
     ForecastModel,
     Calculation, InfoMixin, VectorForecast, ForecastGroup,
@@ -134,8 +135,11 @@ def get_forecast_by_xy(request):
 
 
 def debug_create_forecast(request):
-    base = datetime.datetime(2021, 5, 4)
-    date_list = [base - datetime.timedelta(days=x) for x in range(1)]
+    send_notifications()
+    return HttpResponse('ok')
+    # base = datetime.datetime(2022, 3, 13)
+    # date_list = [base - datetime.timedelta(days=x) for x in range(1)]
+    date_list = [datetime.datetime(2022, 4, 14)]
     for date in date_list:
         for hour, hour in InfoMixin.FORECAST_UTC_HOURS_CHOICES:
             for fType in ['00', '12']:
@@ -149,8 +153,9 @@ def debug_create_forecast(request):
 
 
 def debug_save_index(request):
-    base = datetime.datetime(2021, 5, 4)
-    date_list = [base - datetime.timedelta(days=x) for x in range(1)]
+    # base = datetime.datetime(2022, 4, 15)
+    # date_list = [base - datetime.timedelta(days=x) for x in range(1)]
+    date_list = [datetime.datetime(2022, 4, 14)]
     for date in date_list:
         for hour, hour in InfoMixin.FORECAST_UTC_HOURS_CHOICES:
             for fType in ['00', '12']:
@@ -161,4 +166,10 @@ def debug_save_index(request):
                     forecastType=fType,
                     date=date
                 )
+    return HttpResponse('ok')
+
+
+def debug_periodic_task(request):
+    from forecast_app.tasks import create_forecast_for_model
+    create_forecast_for_model('gfs', '00')
     return HttpResponse('ok')
