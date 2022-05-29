@@ -5,6 +5,7 @@ from celery_app import app
 
 from .models import InfoMixin, ForecastModel, Calculation
 from .services import create_forecast
+from informer_app.tasks import send_notifications
 
 
 @app.task(name="create_forecast_for_model")
@@ -18,7 +19,9 @@ def create_forecast_for_model(forecastModelName: str, forecastType: Literal['00'
     forecastModel = ForecastModel.objects.get(name=forecastModelName)
     # Это получение моделей только для одной группы
     calculations = Calculation.objects.filter(model=forecastModel)
-    date_today = datetime.datetime.now().date()
+    # date_today = datetime.datetime.now().date()
+    # TODO разобраться с этим (то что нужно смещать день для текущего прогноза)
+    date_today = datetime.datetime.now().date() - datetime.timedelta(days=1)  # для текущего дня берем из прошлого дня
     date = datetime.datetime(date_today.year, date_today.month, date_today.day)  # для того чтобы можно заменить час
 
     # Получаем какие у нас группы есть для текущей группы (штормы, смерчи и т.д.)
