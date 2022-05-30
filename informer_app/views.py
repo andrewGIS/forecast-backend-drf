@@ -10,7 +10,7 @@ from celery_app import app
 from .models import InfoPoint
 from django.contrib.gis.geos import Point
 from forecast_app.models import VectorForecast
-from .tasks import run_main, send_notifications
+from .tasks import send_test_message, send_notifications
 
 
 def create_notification(request):
@@ -44,11 +44,6 @@ def create_notification(request):
 
 
 def check_intersection(request):
-    pnt = InfoPoint.objects.all()[0].point
-    dates = [
-        p.forecast_date.strftime("%Y%M%d") for p in VectorForecast.objects.filter(mpoly__intersects=pnt)
-    ]
-    # for d in dates:
-    #     run_main.delay(d)
-    send_notifications()
+    #send_notifications()
+    send_test_message()
     return HttpResponse('ok')

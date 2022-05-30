@@ -16,11 +16,15 @@ async def main(telegramLogin='@antar93',  message='Testing telethon'):
     client = TelegramClient('anon', app_id, api_hash)
     await client.start(bot_token=bot_id)
     await client.send_message(telegramLogin, message)
+    await client.disconnect()
 
 
 @app.task(name="send_notification")
-def run_main(message):
-    asyncio.run(main(message))
+def send_test_message():
+    asyncio.run(main(
+        "antar93",
+        'По текущему прогнозу для вашей области интереса опасных явлений не обнаружено'
+    ))
     # return HttpResponse('ok')
 
 
@@ -37,6 +41,7 @@ def send_notifications():
         # TODO пока берем только одну точку у пользователя
         targetPoint = InfoPoint.objects.filter(user=account.user)[0]
         # TODO брать буфер вокруг точки
+        # TODO точно проверить какую дату мы отправляем
         userForecasts = VectorForecast.objects.filter(
             forecast_date=datetime.now().date(),
             #forecast_date=date(2021, 5, 15),
