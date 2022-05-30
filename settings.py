@@ -26,20 +26,10 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", 'django-insecure-qr(mx1=hp_4bj$%hu%3
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = [
-    'ogs.psu.ru',
-    'localhost',
-    'localhost:8080'
-]
+ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", '').split(",")
 
-CSRF_TRUSTED_ORIGINS = (
-    'http://localhost:8080',
-)
-
-#CSRF_COOKIE_HTTPONLY = False
+CSRF_TRUSTED_ORIGINS = os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", '').split(",")
 CSRF_COOKIE_SECURE = False
-#SESSION_COOKIE_SECURE = True
-
 
 # Application definition
 
@@ -101,12 +91,7 @@ REST_FRAMEWORK = {
     ),
 }
 
-#CORS_ORIGIN_ALLOW_ALL = False
-CORS_ORIGIN_WHITELIST = (
-    'http://localhost:8080',
-    'http://127.0.0.1:8000',
-    'http://ogs.psu.ru'
-)
+CORS_ORIGIN_WHITELIST = os.getenv("DJANGO_CORS_ORIGIN_WHITELIST", "").split(",")
 
 # CORS_ALLOWED_ORIGINS = [
 #     'http://localhost:8080',
