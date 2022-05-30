@@ -21,7 +21,9 @@ def create_forecast_for_model(forecastModelName: str, forecastType: Literal['00'
     calculations = Calculation.objects.filter(model=forecastModel)
     # date_today = datetime.datetime.now().date()
     # TODO разобраться с этим (то что нужно смещать день для текущего прогноза)
-    date_today = datetime.datetime.now().date() - datetime.timedelta(days=1)  # для текущего дня берем из прошлого дня
+    #date_today = datetime.datetime.now().date() - datetime.timedelta(days=1)  # для текущего дня берем из прошлого дня
+    #date_today = datetime.datetime.utcnow().date()  # для текущего дня берем из прошлого дня
+    date_today = datetime.datetime.utcnow().date() - datetime.timedelta(days=1)  # для текущего дня берем из прошлого дня
     date = datetime.datetime(date_today.year, date_today.month, date_today.day)  # для того чтобы можно заменить час
 
     # Получаем какие у нас группы есть для текущей группы (штормы, смерчи и т.д.)
