@@ -33,7 +33,8 @@ def create_notification(request):
         pnt = Point(x=float(data['x']), y=float(data['y']), srid=4326)
         infoPoint = InfoPoint(
             user=user,
-            point=pnt
+            point=pnt,
+            name=data['name'],
         )
         infoPoint.save()
 
