@@ -135,8 +135,8 @@ def get_forecast_by_xy(request):
 
 
 def debug_create_forecast(request):
-    send_notifications()
-    return HttpResponse('ok')
+    #send_notifications()
+    #return HttpResponse('ok')
     # base = datetime.datetime(2022, 3, 13)
     # date_list = [base - datetime.timedelta(days=x) for x in range(1)]
     date_list = [datetime.datetime(2022, 4, 14)]

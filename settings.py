@@ -49,7 +49,6 @@ INSTALLED_APPS = [
     'forecast_app',
     'auth_app',
     'informer_app',
-    'raster',
 ]
 
 MIDDLEWARE = [
