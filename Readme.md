@@ -11,18 +11,16 @@
 
 1 Поднимаем базу
 По умолчанию БД (Postgres + PostGIS), параметры подключения к базе 
-по умолчанию  указана в [settings.py](./settings.py) в корне проекта 
-КЛЮЧ **DATABESES**
+по умолчанию  указана в [develop.env](./develop.env) в корне проекта 
 ```.env
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.contrib.gis.db.backends.postgis',
-        'NAME': 'gis',
-        'USER': 'docker',
-        'PASSWORD': 'gis',
-        'PORT': 25432
-    }
-}
+DB_NAME=gis
+DB_USER=docker
+DB_PASS=gis
+DB_PORT=25432
+#DB_HOST=localhost
+DB_HOST=host.docker.internal # когда хотим подключиться к базе из докера на локалхосте
+DB_ENGINE=django.contrib.gis.db.backends.postgis
+
 ```
 
 Разработка велась c Docker, поэтому параметры такие. PostGIS Image можно взять [отсюда](https://hub.docker.com/r/kartoza/postgis/)
@@ -44,11 +42,10 @@ python manage.py runserver
 
 ### Подключение веб-сервиса
 
-1 Создаем папку `.\forecast_app\web` клонируем туда [репозиторий](https://github.com/andrewGIS/forecast-web-app) и далее по инструкции. Пробуем запустить `localhost:8000`
+1 C мая 2022 веб-приложение живет отдельно кклонируем туда [репозиторий](https://github.com/andrewGIS/forecast-web-app) переключаемся в ветку **drf** и далее по инструкции.
 
 2 Ссылки 
 * `localhost:8000\admin` - админка Django (`admin admin`)
-* `localhost:8000` - приложение
 
 ### Разное
 * Запуск шелла в Anaconde
