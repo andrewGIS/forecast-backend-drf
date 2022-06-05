@@ -80,6 +80,8 @@ def get_forecast_by_filter(request):
 @api_view(['GET'])
 def get_dates(request):
     modelName = request.GET.get('model', None)
+    if not modelName:
+        return JsonResponse({"dates": []})
     data = VectorForecast.objects.filter(model__name=modelName)
     data = data.distinct('forecast_date')
     # data = data.annotate(
