@@ -16,33 +16,33 @@ app = Celery('app_drf')
 app.config_from_object('django.conf:settings', namespace='CELERY')
 
 # app.conf.broker_url = 'redis://localhost:6379/0' # когда разрабатываем локально редиску может не увидеть
-app.conf.broker_url = os.getenv("CELERY_BROKER_URL", 'redis://redis:6379')
+app.conf.broker_url = os.getenv("DJANGO_CELERY_BROKER_URL", 'redis://redis:6379')
 app.loader.override_backends['django-db'] = 'django_celery_results.backends.database:DatabaseBackend'
 
 # Load task modules from all registered Django apps.
 # django-raster cause problem so i comment it
 # app.autodiscover_tasks()
 # app.tasks.register(forecast_app.tasks.test)
-# TODO время по Пермскому времени как сервер
+# TODO время по Пермскому времени как сервер, а в кроне указываем в UTC
 app.conf.beat_schedule = {
     'get-forecast-gfs-00': {
         'task': 'create_forecast_for_model',
-        'schedule': crontab(hour=2, minute=50),
+        'schedule': crontab(hour=6, minute=30),
         'args': ('gfs', '00')
     },
     'get-forecast-gfs-12': {
         'task': 'create_forecast_for_model',
-        'schedule': crontab(hour=4, minute=30),
+        'schedule': crontab(hour=12, minute=30),
         'args': ('gfs', '12')
     },
     'get-forecast-icon-00': {
         'task': 'create_forecast_for_model',
-        'schedule': crontab(hour=14, minute=50),
+        'schedule': crontab(hour=5, minute=00),
         'args': ('icon', '00')
     },
     'get-forecast-icon-12': {
         'task': 'create_forecast_for_model',
-        'schedule': crontab(hour=15, minute=30),
+        'schedule': crontab(hour=17, minute=00),
         'args': ('icon', '12')
     },
 }
