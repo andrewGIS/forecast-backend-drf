@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 import os
+from datetime import timedelta
 from pathlib import Path
 from corsheaders.defaults import default_headers
 
@@ -140,9 +141,12 @@ SIMPLE_JWT = {
     'VERIFYING_KEY': 'VERIFY_KEY',
     'USER_ID_FIELD': 'id',
     'USER_ID_CLAIM': 'user_id',
-    # TODO сам руками забил, без него не парсился токен
     'AUTH_HEADER_TYPES': ('Bearer',),
     'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
+    'ACCESS_TOKEN_LIFETIME':
+        timedelta(seconds=int(os.getenv("DJANGO_JWT_ACCESS_TOKEN_LIFETIME_SECONDS", 3600))),
+    'REFRESH_TOKEN_LIFETIME':
+        timedelta(seconds=int(os.getenv("DJANGO_JWT_REFRESH_TOKEN_LIFETIME_SECONDS", 216000))),
 }
 
 

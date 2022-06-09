@@ -2,7 +2,9 @@ from django.http import HttpResponse
 from rest_framework import status
 from rest_framework.generics import CreateAPIView
 from rest_framework.permissions import AllowAny
+from rest_framework.request import Request
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.contrib.auth.models import User
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -23,9 +25,6 @@ def check_jwt(request):
         print (user, token['user_id'])
         user_id = token['user_id']
         user = User.objects.get(id=user_id)
-
-
-
         return HttpResponse("this is decoded token claims", token.payload)
     else:
         return HttpResponse("no token is provided in the header or the header is missing")
