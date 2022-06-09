@@ -14,7 +14,6 @@ class InfoPointSerializer(serializers.ModelSerializer):
         fields = ('X', 'Y', 'name')
 
     def create(self, validated_data):
-        print(self.context['request'].user)
         pnt = Point(x=float(validated_data['X']), y=float(validated_data['Y']), srid=4326)
         infoPoint = InfoPoint(
             user=self.context['request'].user,
