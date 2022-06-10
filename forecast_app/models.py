@@ -9,7 +9,6 @@ class ForecastModel(models.Model):
     geotransform = models.CharField(max_length=100, default='(34.875, 0.25, 0.0, 65.125, 0.0, -0.25)')
     rasterWidth = models.PositiveIntegerField(default=161)
     rasterHeight = models.PositiveIntegerField(default=61)
-    # TODO вынести в отдельную таблицу
     indexes = models.CharField(max_length=500, null=True)
 
     def __str__(self):

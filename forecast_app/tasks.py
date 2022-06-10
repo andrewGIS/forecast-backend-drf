@@ -43,4 +43,4 @@ def create_forecast_for_model(
                     groupName=calculation.forecast_group.name
                 )
 
-    send_notifications()
+    send_notifications(forecastModelName, forecastType)

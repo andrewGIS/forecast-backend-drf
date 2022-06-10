@@ -29,7 +29,7 @@ def send_test_message():
 
 
 @app.task(name="send_notifications")
-def send_notifications():
+def send_notifications(modelName, forecastType):
     """
     Отправка оповещений всем пользователям с логином по интересующей точке
     :return:
@@ -50,7 +50,9 @@ def send_notifications():
         userForecasts = userForecasts.order_by('forecast_datetime_utc')
         userForecasts = userForecasts.distinct('level_code', 'model', 'forecast_datetime_utc')
 
-        message = ''
+        message = f'Прогноз по модели {modelName}, тип - {forecastType}'
+        message += '\n'
+        message += f'Дата прогноза - на {datetime.now().date()}'
 
         if userForecasts.count() == 0:
             asyncio.run(main(

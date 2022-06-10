@@ -14,6 +14,6 @@ urlpatterns = [
     path('get_forecast/', get_forecast_by_filter, name='get_forecast'),
     path('get_dates/', get_dates, name='get_dates'),
     path('indexes/', get_indexes, name='get_indexes'),
-    path('get_legend', get_legend, name='get_legend'),
-    path('get_raster', get_raster, name='get_raster'),
+    path('get_legend/', get_legend, name='get_legend'),
+    path('get_raster/', get_raster, name='get_raster'),
 ]

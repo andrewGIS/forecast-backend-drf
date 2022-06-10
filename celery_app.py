@@ -23,7 +23,6 @@ app.loader.override_backends['django-db'] = 'django_celery_results.backends.data
 # django-raster cause problem so i comment it
 # app.autodiscover_tasks()
 # app.tasks.register(forecast_app.tasks.test)
-# TODO время по Пермскому времени как сервер, а в кроне указываем в UTC
 app.conf.beat_schedule = {
     'get-forecast-gfs-00': {
         'task': 'create_forecast_for_model',
