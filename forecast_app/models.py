@@ -74,6 +74,9 @@ class ForecastBaseMixin(models.Model):
     model = models.ForeignKey(ForecastModel, on_delete=models.CASCADE)
     forecast_group = models.ForeignKey(ForecastGroup, on_delete=models.CASCADE)
 
+    def get_forecast_model_name(self):
+        return self.model.name
+
 
 class IndexRaster(InfoMixin):
 
@@ -89,7 +92,7 @@ class RasterForecast(InfoMixin, ForecastBaseMixin):
 
     # Returns the string representation of the model.
     def __str__(self):
-        return f'raster - {self.forecast_group.alias} - {self.date_UTC_full}'
+        return f'{self.get_forecast_model_name()} - {self.forecast_group.alias} - {self.date_UTC_full}'
 
 
 class VectorForecast(InfoMixin, ForecastBaseMixin):
@@ -103,7 +106,7 @@ class VectorForecast(InfoMixin, ForecastBaseMixin):
     level_code = models.PositiveIntegerField(verbose_name="Уровень риска")
 
     def __str__(self):
-        return f'vector - {self.forecast_group.alias} - {self.date_UTC_full}'
+        return f'{self.get_forecast_model_name()} - {self.forecast_group.alias} - {self.date_UTC_full}'
 
 
 class Variable(models.Model):
@@ -125,7 +128,7 @@ class Calculation(ForecastBaseMixin):
     alias = models.CharField(max_length=200, default='')
 
     def __str__(self):
-        return f'{self.forecast_group} - {self.code} - {self.expression}'
+        return f'{self.get_forecast_model_name()} - {self.forecast_group} - {self.code} - {self.expression}'
 
     def get_variables(self):
         return "\n".join([p.index_name for p in self.variables.all()])

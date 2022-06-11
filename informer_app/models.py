@@ -8,4 +8,4 @@ class InfoPoint(models.Model):
     name = models.TextField(max_length=150)
 
     def __str__(self):
-        return f'{self.user.get_full_name()} : {self.name}'
+        return  f'{self.user.get_full_name()} : {self.name}' if self.user.get_full_name() else self.name
