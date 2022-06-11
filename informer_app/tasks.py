@@ -6,7 +6,7 @@ import asyncio
 
 from auth_app.models import Person
 from celery_app import app
-from forecast_app.models import VectorForecast
+from forecast_app.models import VectorForecast, ForecastModel
 
 
 async def main(telegramLogin='@antar93',  message='Testing telethon'):
@@ -37,6 +37,7 @@ def send_notifications(modelName, forecastType):
     # TODO пока оповещение можно делать по gfs модели
     from informer_app.models import InfoPoint
     accountsWithLogins = Person.objects.filter(telegram_login__isnull=False)
+    usedForecastModel = ForecastModel.objects.get(name=modelName)
     for account in accountsWithLogins:
         # TODO пока берем только одну точку у пользователя
         targetPoint = InfoPoint.objects.filter(user=account.user)[0]
@@ -44,6 +45,8 @@ def send_notifications(modelName, forecastType):
         # TODO точно проверить какую дату мы отправляем
         userForecasts = VectorForecast.objects.filter(
             forecast_date=datetime.now().date(),
+            model=usedForecastModel,
+            forecast_type=forecastType
             #forecast_date=date(2021, 5, 15),
             #mpoly__intercests=targetPoint.point
         )
