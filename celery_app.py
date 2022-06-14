@@ -31,7 +31,7 @@ app.conf.beat_schedule = {
     },
     'get-forecast-gfs-12': {
         'task': 'create_forecast_for_model',
-        'schedule': crontab(hour=12, minute=30),
+        'schedule': crontab(hour=17, minute=30),
         'args': ('gfs', '12')
     },
     'get-forecast-icon-00': {
