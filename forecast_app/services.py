@@ -1,4 +1,5 @@
 import datetime
+import logging
 import io
 
 import numpy as np
@@ -19,6 +20,10 @@ from forecast_app.models import (
     ForecastModel,
     IndexRaster
 )
+
+
+
+logger = logging.getLogger(__name__)
 
 
 def find_forecast(
@@ -45,6 +50,7 @@ def find_forecast(
     data = VectorForecast.objects if dataType == 'vector' else RasterForecast.objects
 
     # TODO координаты по растру нельзя запрашивать
+    # TODO сделать через фильтры
     if coordinates:
         pnt_wkt = f'POINT({coordinates[0]} {coordinates[1]})'
         searchDistance = D(km=20)
@@ -118,7 +124,7 @@ def calc_path(
             f'{modelName}-ural/{formattedDate}{forecastType}.zip' +
             f'\\{modelName}.{formattedDate}{forecastType}.{hour}.{indexName}.tif'
     )
-    print(srcString)
+    logger.debug(srcString)
     return srcString
 
 
@@ -147,17 +153,6 @@ def create_forecast(
     # assert (hourDB in InfoMixin.FORECAST_UTC_HOURS_CHOICES,
     #         f'Неизвестный час {hourDB}, известные {InfoMixin.FORECAST_UTC_HOURS_CHOICES}')
 
-    # Общие атрибуты для прогнозов
-    generalOptions = {
-        'model': forecastModel,
-        'forecast_group': forecastGroup,
-        'date_UTC_full': fullDateUTC,
-        'forecast_date': date,
-        'forecast_type': forecastType,
-        'forecast_datetime_utc': date,
-        'forecast_hour_utc': hourDB
-    }
-
     # Расчет значений для всех уровней опасности для одной группы (например для всех уровней опасности для
     # шторма)
     levels = []
@@ -168,7 +163,7 @@ def create_forecast(
             forecastModel=forecastModel,
             calculation=calculation,
             date=date,
-            save_index_rasters=True
+            save_index_rasters=False
         )
         levels.append(calculated)
 
@@ -178,6 +173,34 @@ def create_forecast(
     result = np.ma.masked_equal(result, 0)
     result = result.min(axis=2)
     result = result.filled(fill_value=0)
+
+
+    # Обязательно формируем итоговую дату после выполнения расчетов, потому что дата на которую прогнозируем
+    # может быть другая ( пример gfs.2022041412.021.cape_surface.tif -> 20220415.009)
+    # тут добавляем смещение потому что в прогнозе от 12 часов прогноз делаем уже
+    # на следущий день и дата меняется
+    if forecastType == '12':
+        shiftedDate = date.replace(hour=12) + datetime.timedelta(hours=int(hourDB))
+        logger.warning(
+            f'Преобразование даты (т.к. тип прогноза -  {forecastType}): '+
+            f'исходная дата {date} будет записана в БД как {shiftedDate}'
+        )
+        date = shiftedDate
+        fullDateUTC = shiftedDate.strftime(f'%Y%m%d{forecastType}.0%H')  # получаем дату с часов прогноза -> 2021072100.003
+        hourDB = shiftedDate.strftime('%H')  # час прогноза -> 03, 12 так представляем в базе
+
+    # Общие атрибуты для прогнозов
+    # Обязательно размещать после того расчет сделан, потому что даты источника,
+    # и итоговая дата прогноза могут измениться смотри чуть выше
+    generalOptions = {
+        'model': forecastModel,
+        'forecast_group': forecastGroup,
+        'date_UTC_full': fullDateUTC,
+        'forecast_date': date,
+        'forecast_type': forecastType,
+        'forecast_datetime_utc': date,
+        'forecast_hour_utc': hourDB
+    }
 
     # save raster forecast to db
     save_forecast_raster(result, forecastModel, **generalOptions)
@@ -236,6 +259,7 @@ def perform_calculation(
 
     # заменяем код на уровень риска
     calculated = np.where(calculated == 0, 0, calculation.code)
+    del data
     return calculated
 
 
