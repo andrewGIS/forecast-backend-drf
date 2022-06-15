@@ -101,8 +101,9 @@ def send_notifications(modelName, forecastType, filterDate=None):
             message += f"{emoji} ** Уровень опасности {level_code}** {emoji} \n"
             message += '\n'
             for f in userForecasts.filter(level_code=level_code):
+                pntDatetime = f.forecast_datetime_utc - timedelta(hours=targetPoint.pointFromUTCOffset)
                 message += (
-                        f"Время - {f.forecast_datetime_utc.strftime('%H:%M')};"
+                        f"Время - {pntDatetime.strftime('%H:%M')};"
                         f" Явление -  {f.forecast_group.alias}; \n"
                 )
 
