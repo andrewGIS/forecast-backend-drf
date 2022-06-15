@@ -5,7 +5,7 @@ from celery_app import app
 
 from .models import InfoMixin, ForecastModel, Calculation
 from .services import create_forecast
-from informer_app.tasks import send_notifications
+from informer_app.tasks import send_notifications, send_notifications_admin
 from celery.utils.log import get_task_logger
 logger = get_task_logger(__name__)
 
@@ -43,4 +43,6 @@ def create_forecast_for_model(
                     groupName=calculation.forecast_group.name
                 )
 
+    # TODO сохранять переменные (температура и т.д)
     send_notifications(forecastModelName, forecastType)
+    send_notifications_admin(forecastModelName, forecastType)
