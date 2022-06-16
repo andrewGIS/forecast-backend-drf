@@ -110,7 +110,7 @@ def get_indexes(request):
 def get_legend(request):
     modelName = request.GET.get('model', None)
     group = request.GET.get('group', None)
-    data = Calculation.objects.filter(model__name=modelName, forecast_group__name=group)
+    data = Calculation.objects.filter(model__name=modelName, forecast_group__name=group).order_by('code')
     s = LegendSerializer(data, many=True)
     return JsonResponse(s.data, safe=False)
 
