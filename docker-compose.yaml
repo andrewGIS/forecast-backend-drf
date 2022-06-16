@@ -1,9 +1,40 @@
 version: "3.8"
 
+networks:
+  net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: "172.20.0.0/24"
+#          gateway: 172.20.0.1
+
 services:
+    web:
+      container_name: web
+      image: web_app_drf:latest
+      ports:
+        - 8080:80
+      networks:
+        net:
+      depends_on:
+        - main-app
     redis:
-      container_name: redis-db
+      container_name: redis
       image: redis:latest
+      command:
+        - /bin/sh
+        - -c
+        # - Double dollars, so that the variable is not expanded by Docker Compose
+        # - Surround by quotes, so that the shell does not split the password
+        # - The ${variable:?message} syntax causes shell to exit with a non-zero
+        #   code and print a message, when the variable is not set or empty
+        - redis-server --requirepass "$${REDIS_PASSWORD:?REDIS_PASSWORD variable is not set}"
+      env_file:
+        - develop.env
+      networks:
+        net:
+          ipv4_address: 172.20.0.4
     main-app:
       container_name: main-app
       env_file:
@@ -14,6 +45,8 @@ services:
         - redis
       ports:
       - 8000:8000
+      networks:
+         net:
     api-beat:
       container_name: sheduler
       env_file:
@@ -22,6 +55,8 @@ services:
       command: celery -A celery_app beat --loglevel=info
       depends_on:
         - main-app
+      networks:
+        net:
     api-worker:
       container_name: worker
       env_file:
@@ -30,6 +65,8 @@ services:
       command: celery -A celery_app worker --pool=solo --loglevel=info
       depends_on:
         - main-app
+      networks:
+        net:
 
 
 
