@@ -1,5 +1,6 @@
 import os
-from datetime import datetime,timedelta
+from datetime import datetime, timedelta
+from typing import List, Tuple
 
 from django.contrib.gis.gdal import SpatialReference, CoordTransform
 from django.contrib.gis.measure import D
@@ -22,6 +23,24 @@ async def main(telegramLogin='@antar93',  message='Testing telethon'):
     await client.send_message(telegramLogin, message)
     await client.disconnect()
 
+async def send_messages(data:List[Tuple]):
+    """
+    :param data: List[(Account: message for telegram account)]
+    :return:
+    """
+    app_id = int(os.getenv('NOTIFICATION_APP_ID', None))
+    api_hash = os.getenv('NOTIFICATION_APP_HASH', None)
+    bot_id = os.getenv('NOTIFICATION_BOT_TOKEN', None)
+    client = TelegramClient('anon', app_id, api_hash)
+    await client.start(bot_token=bot_id)
+    for login, message in data:
+        await client.send_message(login, message)
+    await client.disconnect()
+
+def run_butch_sending_messages(data:List[Tuple]):
+    loop = asyncio.new_event_loop()
+    loop.run_until_complete(send_messages(data))
+    loop.close()
 
 @app.task(name="send_notification")
 def send_test_message():
@@ -46,6 +65,7 @@ def send_notifications(modelName, forecastType, filterDate=None):
     if not filterDate:
         filterDate = datetime.now().date()
 
+    data = []
     for account in accountsWithLogins:
         allUserPoints = InfoPoint.objects.filter(user=account.user)
         if allUserPoints.count() == 0:
@@ -77,11 +97,8 @@ def send_notifications(modelName, forecastType, filterDate=None):
         if userForecasts.count() == 0:
             message += '\n'
             message += 'По текущему прогнозу для вашей области интереса опасных явлений не обнаружено'
-            asyncio.run(main(
-                account.telegram_login,
-                message
-            ))
-            return 'Not event founded'
+            data.append((account.telegram_login, message))
+            continue
 
         # какие вообще уровни есть для нашего пользователя
         level_codes = set(userForecasts.values_list('level_code', flat=True))
@@ -107,8 +124,9 @@ def send_notifications(modelName, forecastType, filterDate=None):
                         f" Явление -  {f.forecast_group.alias}; \n"
                 )
 
-        asyncio.run(main(account.telegram_login, message))
-        return message
+        data.append((account.telegram_login,message))
+
+    run_butch_sending_messages(data)
 
 @app.task(name="send_notifications_admin")
 def send_notifications_admin(modelName, forecastType, filterDate=None):
@@ -166,13 +184,14 @@ def send_notifications_admin(modelName, forecastType, filterDate=None):
             f"Количество объектов- {subquery.count()}; \n"
         ])
 
+    data = []
     for account in adminWithLogins:
         if todayForecasts.count() != 0 :
             message += '\n'
             message += f'Посмотреть {os.getenv("NOTIFICATION_FRONT_ADDRESS", default="http://ogs.psu.ru:5003")}'
-        asyncio.run(main(account.telegram_login, message))
-        return message
+        data.append((account.telegram_login, message))
 
+    run_butch_sending_messages(data)
 
 def calc_area(data: QuerySet):
     wgs84 = SpatialReference('WGS84')
