@@ -1,8 +1,9 @@
 from django.urls import path
-from .views import CreateNotificationView, InfoPointsList, test_sending
+from .views import NotificationView, test_sending
 
 urlpatterns = [
-    path('order', CreateNotificationView.as_view(), name='order_notification'),
+    path('order', NotificationView.as_view(), name='order'),
+    path('order/<int:pk>', NotificationView.as_view(), name='order'),
     path('send_test', test_sending, name='send_test'),
-    path('list_points', InfoPointsList.as_view(), name='user_info_points')
+    path('list_points', NotificationView.as_view(), name='user_info_points')
 ]
