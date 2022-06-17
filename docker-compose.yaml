@@ -52,7 +52,9 @@ services:
       env_file:
         - develop.env
       image: app_drf:latest
-      command: celery -A celery_app beat --loglevel=info
+      # -s using to save at user folder
+      # TODO вынести имя пользователя
+      command: celery -A celery_app beat --loglevel=info -s "/opt/appuser/celerybeat-schedule.db"
       depends_on:
         - main-app
       networks:

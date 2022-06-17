@@ -12,4 +12,13 @@ ENV PYTHONUNBUFFERED 1
 
 RUN pip3 install -r requirements.txt
 
+#RUN groupadd djangoapp
+# TODO вынести имя пользователя (в docker compose также)
+RUN useradd -ms /bin/bash -d /opt/appuser -u 1500 appuser
+#RUN usermod -a -G djangoapp appuser
+#RUN chown -R djangoapp:appuser /var/log/celery/
+#RUN chown -R djangoapp:appuser /var/run/celery/
+
+USER appuser
+
 COPY . /usr/src/app/
