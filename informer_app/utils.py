@@ -57,7 +57,7 @@ class UserMessageCreator(MessageCreator):
 
         if forecasts.count() == 0:
             message += rowSeparator
-            message += f'По текущему прогнозу для точки {self.userPoint.name} опасных явлений не обнаружено'
+            message += f'По текущему прогнозу для вашей точки наблюдения {self.userPoint.name} опасных явлений не обнаружено'
             return message
 
         message += f'Для вашей точки наблюдения **{self.userPoint.name}** обнаружены следующие опасные явления:'
