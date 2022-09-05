@@ -34,14 +34,15 @@ app.conf.beat_schedule = {
         'schedule': crontab(hour=17, minute=30),
         'args': ('gfs', '12')
     },
-    'get-forecast-icon-00': {
-        'task': 'create_forecast_for_model',
-        'schedule': crontab(hour=5, minute=00),
-        'args': ('icon', '00')
-    },
-    'get-forecast-icon-12': {
-        'task': 'create_forecast_for_model',
-        'schedule': crontab(hour=17, minute=00),
-        'args': ('icon', '12')
-    },
+    # TODO включить обратно когда появятся нормальные критерии по icon
+    # 'get-forecast-icon-00': {
+    #     'task': 'create_forecast_for_model',
+    #     'schedule': crontab(hour=5, minute=00),
+    #     'args': ('icon', '00')
+    # },
+    # 'get-forecast-icon-12': {
+    #     'task': 'create_forecast_for_model',
+    #     'schedule': crontab(hour=17, minute=00),
+    #     'args': ('icon', '12')
+    # },
 }
