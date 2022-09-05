@@ -60,3 +60,5 @@ manage.py shell_plus --notebook
 import os
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 ```
+
+Обязательно проверить чтобы при сборке приложения не попало anon.session, иначе библиотека Telethon не сможет записывать сессии (файл создается не с правильными правами). В настоящий момент исправлено c помощью файла `.dockerignore`

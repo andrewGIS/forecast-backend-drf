@@ -1,3 +1,2 @@
-forecast_app/web/node_modules
-forecast_app/web/dist
 venv
+anon.session
