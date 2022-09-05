@@ -19,6 +19,10 @@ RUN useradd -ms /bin/bash -d /opt/appuser -u 1500 appuser
 #RUN chown -R djangoapp:appuser /var/log/celery/
 #RUN chown -R djangoapp:appuser /var/run/celery/
 
-USER appuser
-
 COPY . /usr/src/app/
+
+# Для сессий телерамма
+# TODO при возможности исправить
+RUN chmod 777 /usr/src/app/
+
+USER appuser

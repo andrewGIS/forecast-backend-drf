@@ -2,9 +2,6 @@ import os
 from datetime import datetime, timedelta
 from typing import List, Tuple
 
-from django.contrib.gis.gdal import SpatialReference, CoordTransform
-from django.contrib.gis.measure import D
-from django.db.models.query import QuerySet
 from telethon import TelegramClient
 import asyncio
 
@@ -12,6 +9,7 @@ from auth_app.models import Person
 from celery_app import app
 from forecast_app.models import VectorForecast, ForecastModel
 from informer_app.models import InfoPoint
+from informer_app.utils import AdminMessageCreator, UserMessageCreator
 
 
 async def main(telegramLogin='@antar93',  message='Testing telethon'):
@@ -25,7 +23,7 @@ async def main(telegramLogin='@antar93',  message='Testing telethon'):
 
 async def send_messages(data:List[Tuple]):
     """
-    :param data: List[(Account: message for telegram account)]
+    :param data: List[(Account, message for telegram account)]
     :return:
     """
     app_id = int(os.getenv('NOTIFICATION_APP_ID', None))
@@ -50,7 +48,6 @@ def send_test_message():
     ))
     # return HttpResponse('ok')
 
-
 @app.task(name="send_notifications")
 def send_notifications(modelName, forecastType, filterDate=None):
     """
@@ -65,6 +62,10 @@ def send_notifications(modelName, forecastType, filterDate=None):
     if not filterDate:
         filterDate = datetime.now().date()
 
+    if forecastType == '12':
+        # Если прогноз от 12 часов дня (полудня) уже интресен прогноз на следующую дату
+        filterDate = filterDate + timedelta(days=1)
+
     data = []
     for account in accountsWithLogins:
         allUserPoints = InfoPoint.objects.filter(user=account.user)
@@ -73,6 +74,7 @@ def send_notifications(modelName, forecastType, filterDate=None):
 
         # TODO пока берем только одну точку у пользователя
         targetPoint = allUserPoints[0]
+        messenger = UserMessageCreator(userPoint=targetPoint)
 
         # TODO проверить логику надо ли так делать?
         if forecastType == '12':
@@ -83,48 +85,15 @@ def send_notifications(modelName, forecastType, filterDate=None):
             forecast_date=filterDate,
             model=usedForecastModel,
             forecast_type=forecastType,
-            mpoly__distance_lte=(targetPoint.point, D(m=BUFFER_SIZE))
+            #mpoly__distance_lte=(targetPoint.point, D(m=BUFFER_SIZE))
         )
         userForecasts = userForecasts.order_by('forecast_datetime_utc')
         userForecasts = userForecasts.distinct('level_code', 'model', 'forecast_datetime_utc')
 
-        message = f'Прогноз по модели **{modelName}**, тип - {forecastType}'
-        message += '\n'
-        message += '\n'
-        message += f'Дата прогноза - на {filterDate}'
-        message += '\n'
-
-        if userForecasts.count() == 0:
-            message += '\n'
-            message += 'По текущему прогнозу для вашей области интереса опасных явлений не обнаружено'
-            data.append((account.telegram_login, message))
-            continue
-
-        # какие вообще уровни есть для нашего пользователя
-        level_codes = set(userForecasts.values_list('level_code', flat=True))
-        for level_code in sorted(level_codes):
-            message += '\n'
-            emoji = None
-            count = 2
-            if level_code == 1:
-                emoji = "😱"*count
-            if level_code == 2:
-                emoji = "😬"*count
-            if level_code == 3:
-                emoji = "☹"*count
-            if level_code == 4:
-                emoji = "🙁"*count
-
-            message += f"{emoji} ** Уровень опасности {level_code}** {emoji} \n"
-            message += '\n'
-            for f in userForecasts.filter(level_code=level_code):
-                pntDatetime = f.forecast_datetime_utc - timedelta(hours=targetPoint.pointFromUTCOffset)
-                message += (
-                        f"Время - {pntDatetime.strftime('%H:%M')};"
-                        f" Явление -  {f.forecast_group.alias}; \n"
-                )
-
-        data.append((account.telegram_login,message))
+        data.append((
+            account.telegram_login,
+            messenger.get_message(filterDate, userForecasts)
+        ))
 
     run_butch_sending_messages(data)
 
@@ -138,6 +107,7 @@ def send_notifications_admin(modelName, forecastType, filterDate=None):
     # TODO пока оповещение можно делать по gfs модели
     adminWithLogins = Person.objects.filter(telegram_login__isnull=False, user__is_staff=True)
     usedForecastModel = ForecastModel.objects.get(name=modelName)
+    messenger = AdminMessageCreator(forecastType=forecastType, modelName=modelName)
 
     if not filterDate:
         filterDate = datetime.now().date()
@@ -151,54 +121,11 @@ def send_notifications_admin(modelName, forecastType, filterDate=None):
         forecast_type=forecastType
     )
 
-    message = f'Прогноз по модели **{modelName}**, тип - {forecastType}'
-    message += '\n'
-    message += '\n'
-    message += f'Дата прогноза - на {filterDate}'
-    message += '\n'
-    message += '\n'
-    message += 'Обнаруженные ОЯ:'
-    message += '\n'
-
-    summary = todayForecasts.distinct('level_code', 'forecast_group_id').order_by('level_code')
-
-    for row in summary:
-        message += '\n'
-        emoji = None
-        count = 1
-        if row.level_code == 1:
-            emoji = "😱" * count
-        if row.level_code == 2:
-            emoji = "😬" * count
-        if row.level_code == 3:
-            emoji = "☹" * count
-        if row.level_code == 4:
-            emoji = "🙁" * count
-
-        subquery = todayForecasts.filter(level_code=row.level_code, forecast_group_id=row.forecast_group.id)
-        area = calc_area(subquery)
-        message += "".join([
-            f"{emoji} - Уровень  - **{row.level_code}**, ",
-            f"Явление - **{row.forecast_group.alias}**, ",
-            f"Площадь -{area:.2f} км.кв, ",
-            f"Количество объектов- {subquery.count()}; \n"
-        ])
-
     data = []
     for account in adminWithLogins:
-        if todayForecasts.count() != 0 :
-            message += '\n'
-            message += f'Посмотреть {os.getenv("NOTIFICATION_FRONT_ADDRESS", default="http://ogs.psu.ru:5003")}'
-        data.append((account.telegram_login, message))
+        data.append((
+            account.telegram_login,
+            messenger.get_message(filterDate, todayForecasts)
+        ))
 
     run_butch_sending_messages(data)
-
-def calc_area(data: QuerySet):
-    wgs84 = SpatialReference('WGS84')
-    # коническая альберса
-    albersConic = '+proj=eqdc +lat_0=0 +lon_0=0 +lat_1=15 +lat_2=65 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m no_defs'
-    albersConic = SpatialReference(albersConic)
-    ct = CoordTransform(wgs84, albersConic)
-    # В в квадратных километрах, важно копировать геометрию иначе на месте изменяется
-    area = sum([f.mpoly.transform(ct=ct, clone=True).area for f in list(data.all())])/1000000
-    return area
