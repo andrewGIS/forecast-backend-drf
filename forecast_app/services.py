@@ -174,6 +174,11 @@ def create_forecast(
     result = result.min(axis=2)
     result = result.filled(fill_value=0)
 
+    logger.debug(f'''
+        Расчет для группы {forecastGroup} - модель {forecastModel.name} закончен. 
+        Результат растр формой {result.shape}'''
+    )
+
 
     # Обязательно формируем итоговую дату после выполнения расчетов, потому что дата на которую прогнозируем
     # может быть другая ( пример gfs.2022041412.021.cape_surface.tif -> 20220415.009)
@@ -301,11 +306,22 @@ def raster2dbvector(inArrayData: np.array, forecastModel: Type[ForecastModel], *
 
     :param forecastModel:
     :param inArrayData: Входной одномерный массив, где пиксель уровень риска
-    :param kwargs: Общие параметры прогноза
+    :param kwargs:
+        'model': forecastModel,
+        'forecast_group': forecastGroup,
+        'date_UTC_full': fullDateUTC,
+        'forecast_date': date,
+        'forecast_type': forecastType,
+        'forecast_datetime_utc': date,
+        'forecast_hour_utc': hourDB
     :return:
     """
 
     # Растр для векторизации
+    logger.debug(' '.join([
+        f"Векторизация растра дата - {kwargs.get('forecast_date')}",
+        f"время - {kwargs.get('forecast_hour_utc')}"
+    ]))
     outSpatialRef = osr.SpatialReference()
     outSpatialRef.ImportFromEPSG(4326)
     driver = gdal.GetDriverByName("GTiff")
@@ -347,6 +363,7 @@ def raster2dbvector(inArrayData: np.array, forecastModel: Type[ForecastModel], *
     outLayer.ResetReading()  # по моему для следующей нормальной векторизации
 
     outDataSource.Destroy()
+    dstDs = None
     inRaster = None
 
 
