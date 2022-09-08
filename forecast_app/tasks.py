@@ -23,8 +23,9 @@ def create_forecast_for_model(
     """
 
     forecastModel = ForecastModel.objects.get(name=forecastModelName)
-    # Это получение моделей только для одной группы
-    calculations = Calculation.objects.filter(model=forecastModel)
+    # Это получение групп явлений которые мы задали, через вычисления которые определены в базе
+    # т.к. группы (смерчи шквалы например) не привязаны к моделям (и их списко ведется отдельно)
+    forecastGroups = Calculation.objects.filter(model=forecastModel).distinct('forecast_group_id')
     dateToday = datetime.datetime.now().date()
     logger.info(
         f'Create daily forecast: model - {forecastModelName}, date - {dateToday}, type -  {forecastType}'
@@ -32,7 +33,7 @@ def create_forecast_for_model(
     date = datetime.datetime(dateToday.year, dateToday.month, dateToday.day)  # для того чтобы можно заменить час
     # Получаем какие у нас группы есть для текущей группы (штормы, смерчи и т.д.)
     # группы можем получить только из вычислений, которые привязаны к модели
-    for calculation in calculations:
+    for forecastGroup in forecastGroups:
         # расчеты для каждого часа
         for hour, hour in InfoMixin.FORECAST_UTC_HOURS_CHOICES:
             date = date.replace(hour=int(hour))
@@ -40,7 +41,7 @@ def create_forecast_for_model(
             create_forecast(
                     forecastType=forecastType,
                     date=date,
-                    groupName=calculation.forecast_group.name
+                    groupName=forecastGroup.forecast_group.name
                 )
 
     # TODO сохранять переменные (температура и т.д)
