@@ -15,5 +15,5 @@ urlpatterns = [
     path('get_dates/', get_dates, name='get_dates'),
     path('indexes/', get_indexes, name='get_indexes'),
     path('get_legend/', get_legend, name='get_legend'),
-    path('get_raster/', get_raster, name='get_raster'),
+    path('get_index_raster/', get_raster, name='get_index_raster'),
 ]

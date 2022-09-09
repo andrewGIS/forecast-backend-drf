@@ -1,6 +1,6 @@
 import datetime
 
-from django.contrib.gis.gdal import GDALRaster
+from django.contrib.gis.gdal import GDALException
 
 from django.shortcuts import render
 from rest_framework import status
@@ -117,7 +117,32 @@ def get_legend(request):
 
 @api_view(['GET'])
 def get_raster(request):
-    response = HttpResponse(get_remote_raster().vsi_buffer)
+    modelName = request.GET.get('model', None)
+    indexName = request.GET.get('index_name', None)
+    date = request.GET.get('date', None)
+    hour = request.GET.get('hour', None)
+
+    date = datetime.datetime.strptime(date, '%Y%m%d')
+
+    try:
+        raster = get_remote_raster(
+            modelName=modelName,
+            indexName=indexName,
+            forecastType='12',
+            hour=f'0{hour}',
+            date=date
+        ).vsi_buffer
+    # растра 12 нет пробуем растр 00
+    except GDALException:
+        raster = get_remote_raster(
+            modelName=modelName,
+            indexName=indexName,
+            forecastType='00',
+            hour=f'0{hour}',
+            date=date
+        ).vsi_buffer
+
+    response = HttpResponse(raster)
     response['Content-Disposition'] = f'attachment; filename="test.tif"'
     return response
 

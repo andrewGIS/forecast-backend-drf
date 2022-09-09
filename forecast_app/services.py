@@ -407,20 +407,19 @@ def save_remote_raster_to_db(modelName: str, indexName: str, forecastType: Liter
     indexRaster.save()
 
 
-def get_remote_raster():
+def get_remote_raster(modelName: str, indexName: str, forecastType: Literal['00', '12'], hour: str, date: datetime.datetime):
     """
     Sample how to return raster for leaflet tif
     https://ihcantabria.github.io/Leaflet.CanvasLayer.Field/dist/leaflet.canvaslayer.field.js
     :return:
     """
-    modelName = 'gfs'
     model = ForecastModel.objects.get(name=modelName)
     srcString = calc_path(
-        indexName='dls',
-        hour='009',
-        forecastType='00',
-        modelName='gfs',
-        date=datetime.date(2021, 5, 15)
+        indexName=indexName,
+        hour=hour,
+        forecastType=forecastType,
+        modelName=model.name,
+        date=date
     )
     data = GDALRaster(srcString).bands[0].data()
     rst = GDALRaster({
