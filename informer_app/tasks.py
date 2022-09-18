@@ -2,6 +2,7 @@ import os
 from datetime import datetime, timedelta
 from typing import List, Tuple
 
+from django.contrib.gis.measure import D
 from telethon import TelegramClient
 import asyncio
 
@@ -85,7 +86,7 @@ def send_notifications(modelName, forecastType, filterDate=None):
             forecast_date=filterDate,
             model=usedForecastModel,
             forecast_type=forecastType,
-            #mpoly__distance_lte=(targetPoint.point, D(m=BUFFER_SIZE))
+            mpoly__distance_lte=(targetPoint.point, D(m=BUFFER_SIZE))
         )
         userForecasts = userForecasts.order_by('forecast_datetime_utc')
         userForecasts = userForecasts.distinct('level_code', 'model', 'forecast_datetime_utc')
